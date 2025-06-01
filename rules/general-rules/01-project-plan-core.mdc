@@ -1,0 +1,40 @@
+---
+description: Core project plan consultation requirements
+globs: []
+alwaysApply: true
+---
+---
+description: Project planning and strategy
+globs: 
+alwaysApply: true
+---
+
+# Project Plan Core Directive
+
+## Primary Rule
+
+**ALWAYS consult the project plan before making any changes and update it after completing work.**
+
+## Project Plan Location Priority
+
+1. **Primary**: `PROJECT_PLAN.md` (root directory)
+2. **Secondary**: `docs/PROJECT_PLAN.md` 
+3. **Fallback**: Any file containing "project plan", "roadmap", or "milestones"
+
+## When Plan is Missing
+
+If no project plan exists:
+1. **Alert the user** immediately
+2. **Offer to create one** based on current context
+3. **Do not proceed** without explicit user direction
+
+## Critical Checkpoints
+
+- ✅ Read plan before starting any work
+- ✅ Verify request aligns with current milestone
+- ✅ Update plan after completing tasks
+- ✅ Note any scope or priority changes
+
+---
+
+**This is the foundation rule - all other project management directives build on this.**

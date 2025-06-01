@@ -1,0 +1,13 @@
+---
+description: Virtual environment rules
+globs: 
+alwaysApply: false
+---
+---
+description: Virtual environment rules
+globs: 
+alwaysApply: false
+---
+
+1. Use 'uv' for all virtual environment operations
+2. Create a virtual environment if none exists for the project
