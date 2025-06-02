@@ -2,6 +2,43 @@
 
 This repository contains comprehensive `.mdc` files that guide AI assistants to follow best practices for development, project management, and code quality.
 
+## Quick Start - Import Rules to Your Project
+
+### Using the Import Script
+
+Two import scripts are available:
+- `import-cursor-rules.sh` (Bash - Unix/Linux/macOS)
+- `import-cursor-rules.py` (Python - Cross-platform)
+
+#### Basic Usage:
+```bash
+# Copy all rules to a new project
+./import-cursor-rules.sh /path/to/my-project
+
+# Python version (cross-platform)
+./import-cursor-rules.py /path/to/my-project
+```
+
+#### Advanced Options:
+```bash
+# Create symlinks (changes to source rules affect all projects)
+./import-cursor-rules.sh -l symlink /path/to/my-project
+
+# Only import specific rule sets
+./import-cursor-rules.sh -r general,git /path/to/my-project
+
+# Python project with force overwrite
+./import-cursor-rules.sh -r python -f /path/to/python-project
+
+# View all options
+./import-cursor-rules.sh --help
+```
+
+#### Link Types:
+- **`copy`** (default): Independent copies, safe for modification
+- **`symlink`**: Links to source rules, updates automatically
+- **`hardlink`**: Shared file data, updates with source changes
+
 ## Directory Structure
 
 ### General Rules (`/rules/general-rules/`)
@@ -136,6 +173,10 @@ Plan Check → Conflict Resolution → Progress Track → Plan Update
 
 ## Usage
 
+### Automatic Usage (Recommended)
+Use the import scripts to set up rules in your projects. The AI assistant will automatically follow the imported rules.
+
+### Manual Usage
 These `.mdc` files work automatically with AI assistants that support Cursor rules. The assistant will:
 
 1. **Plan** - Start with or create a project plan
