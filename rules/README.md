@@ -1,14 +1,16 @@
-# Project Plan Management - MDC Files
+# Cursor Rules - AI Assistant Directives
 
-This directory contains a comprehensive set of `.mdc` files that instruct AI assistants to actively manage and maintain project plans throughout the development process.
+This repository contains comprehensive `.mdc` files that guide AI assistants to follow best practices for development, project management, and code quality.
 
-## File Organization
+## Directory Structure
 
-### Core Files (Execute in Order)
+### General Rules (`/rules/general-rules/`)
+Core directives that apply to all projects:
 
-1. **`01-project-plan-core.mdc`** - Foundation directive
-   - Primary rule: Always consult and update project plan
-   - Plan location hierarchy
+1. **`01-core-directive.mdc`** - Foundation principles and methodology
+   - Functional and modular design principles
+   - Approval-based workflow
+   - Project plan management
    - Critical checkpoints
 
 2. **`02-pre-work-analysis.mdc`** - Before starting work
@@ -26,8 +28,6 @@ This directory contains a comprehensive set of `.mdc` files that instruct AI ass
    - Plan synchronization
    - Completion tracking
 
-### Supporting Files
-
 5. **`05-plan-format-standards.mdc`** - Plan structure requirements
    - Standard format template
    - Status indicators
@@ -43,83 +43,107 @@ This directory contains a comprehensive set of `.mdc` files that instruct AI ass
    - Documentation synchronization
    - Testing and CI/CD alignment
 
-## How It Works
+### Language-Specific Rules (`/rules/python-projects/`)
+Specialized directives for specific technologies:
 
-### Priority System
-Files are numbered with priority levels (1-7) to ensure proper execution order:
-- **Priority 1**: Core directive (always executed first)
-- **Priority 2-4**: Workflow phases (pre, during, post work)
-- **Priority 5-7**: Supporting standards and integration
+- **`01-virtual-environment-setup.mdc`** - Python environment management using `uv`
+
+## Core Principles
+
+### Design Philosophy
+- **Seek first to understand** - Promote thoughtful analysis before action
+- **Small things, loosely coupled** - Be functional and modular; keep mutations isolated, avoid side effects
+- **As simple as possible but no simpler** - Balance simplicity with functionality
+- **Critical thinking encouraged** - Don't agree automatically; offer helpful critiques
+
+### Methodology
+- **Start every project with a plan** - Always begin with a project plan
+- **No changes without approval** - Share specific plans and wait for explicit approval
+- **Surgical changes only** - Keep modifications minimal and targeted
+- **Explain rationale** - Always explain why a change is needed
+- **Test thoroughly** - Verify changes work, don't break functionality, test edge cases
+- **Documentation first** - Document approach before coding, explain decisions, keep README current
+
+## Project Plan Management
+
+### Location Priority
+The system looks for project plans in this order:
+1. `PROJECT_PLAN.md` (root directory)
+2. `docs/PROJECT_PLAN.md`
+3. Any file containing "project plan", "roadmap", or "milestones"
 
 ### Workflow Integration
-The files create a complete workflow:
 ```
 User Request → Pre-Work Analysis → Active Work → Post-Work Updates
      ↓              ↓                 ↓              ↓
 Plan Check → Conflict Resolution → Progress Track → Plan Update
 ```
 
-### Key Features
+### Critical Checkpoints
+- ✅ Read plan before starting any work
+- ✅ Verify request aligns with current milestone
+- ✅ Update plan after completing tasks
+- ✅ Note any scope or priority changes
 
-#### 🎯 **Always-On Plan Management**
-- Every AI interaction checks the project plan
+## Key Features
+
+#### 🎯 **Proactive Planning**
+- Every project starts with a comprehensive plan
+- AI assistants create plans when missing
 - No work proceeds without plan consultation
-- Automatic plan updates after completion
 
-#### 🔍 **Conflict Prevention**
-- Early detection of scope/priority conflicts
-- Clear resolution protocols
-- User decision points for plan changes
+#### 🔒 **Quality Control**
+- Approval-based workflow prevents reckless changes
+- Surgical modifications maintain code stability
+- Comprehensive testing including edge cases
 
-#### 📊 **Progress Tracking**
-- Real-time status updates
-- Discovery documentation
-- Decision logging
+#### 📚 **Documentation-First Approach**
+- Document approach before coding
+- Explain all decisions along the way
+- Keep project documentation current
 
-#### 🔄 **Workflow Integration**
+#### 🔄 **Continuous Integration**
 - Commit message standards
 - Branch naming conventions
 - Documentation synchronization
 
-## Expected Project Plan Location
+## Language-Specific Features
 
-The system looks for project plans in this order:
-1. `PROJECT_PLAN.md` (root directory)
-2. `docs/PROJECT_PLAN.md`
-3. Any file containing "project plan", "roadmap", or "milestones"
+### Python Projects
+- **Package Management**: Uses `uv` as default for Python projects
+- **Virtual Environment**: Automated setup and management
+- **Best Practices**: Following Python-specific conventions
 
 ## Benefits
 
 ### For Developers
-- Never lose track of project direction
+- Clear development methodology
 - Automatic progress documentation
-- Clear conflict resolution process
-- Integrated development workflow
+- Integrated quality control
+- Consistent project structure
 
 ### For Project Management
 - Always current project status
 - Documented decisions and changes
 - Clear milestone tracking
-- Stakeholder communication support
+- Proactive conflict resolution
 
 ### For AI Assistants
 - Clear, actionable instructions
 - Structured workflow to follow
-- Consistent plan format requirements
-- Integration with development tools
+- Consistent quality standards
+- Technology-specific guidance
 
 ## Usage
 
-These `.mdc` files work automatically with AI assistants that support the format. No manual intervention required - the assistant will:
+These `.mdc` files work automatically with AI assistants that support Cursor rules. The assistant will:
 
-1. **Check** the project plan before any work
-2. **Analyze** requests for conflicts or alignment issues
-3. **Track** progress during active work
-4. **Update** the plan after completing tasks
-5. **Maintain** plan quality and consistency
-
-The result is a living, accurate project plan that serves as the single source of truth for project direction and progress.
+1. **Plan** - Start with or create a project plan
+2. **Analyze** - Check requests for conflicts or alignment issues
+3. **Approve** - Get explicit approval before making changes
+4. **Execute** - Make surgical, well-tested modifications
+5. **Document** - Update plans and maintain current documentation
 
 ---
 
-**Note**: These files ensure your project plan becomes an active, maintained document rather than a forgotten artifact. 
+**The result is a disciplined, quality-focused development process that maintains project direction while ensuring code quality and documentation.** 
