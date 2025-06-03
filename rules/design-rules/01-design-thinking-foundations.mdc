@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: Apply Design Thinking principles
+globs: 
+alwaysApply: true
+---
+
+1. Create a DESIGN_BRIEF.md file if none exists and use it 
+### User Persona
+- **Primary User**: Mac users needing seamless calendar sync
+- **Pain Points**: Manual calendar management, missing events, duplicate entries  
+- **Goals**: Automatic sync, conflict resolution, reliable state management
