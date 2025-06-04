@@ -41,7 +41,7 @@ Two import scripts are available:
 
 ## Directory Structure
 
-### General Rules (`/rules/general-rules/`)
+### General Rules (`/rules/000-general-rules/`)
 Core directives that apply to all projects:
 
 1. **`01-core-directive.mdc`** - Foundation principles and methodology
@@ -65,25 +65,36 @@ Core directives that apply to all projects:
    - Plan synchronization
    - Completion tracking
 
-5. **`05-plan-format-standards.mdc`** - Plan structure requirements
-   - Standard format template
-   - Status indicators
-   - Quality standards
-
-6. **`06-conflict-resolution.mdc`** - Handling conflicts
+5. **`06-conflict-resolution.mdc`** - Handling conflicts
    - Conflict detection
    - Resolution protocols
    - Communication guidelines
 
-7. **`07-integration-workflow.mdc`** - Development integration
+6. **`07-integration-workflow.mdc`** - Development integration
    - Code workflow integration
    - Documentation synchronization
    - Testing and CI/CD alignment
 
-### Language-Specific Rules (`/rules/python-projects/`)
-Specialized directives for specific technologies:
+### Git Rules (`/rules/100-git-rules/`)
+Version control and collaboration standards:
 
-- **`01-virtual-environment-setup.mdc`** - Python environment management using `uv`
+- **`101-commit-message-standards.mdc`** - Commit message formatting
+- **`102-branch-naming-conventions.mdc`** - Branch naming rules
+- **`103-git-workflow-standards.mdc`** - Git workflow practices
+
+### Design Rules (`/rules/200-design-rules/`)
+UI/UX and design system standards:
+
+- **`201-design-system-standards.mdc`** - Design system guidelines
+- **`202-ui-component-standards.mdc`** - UI component standards
+- **`203-accessibility-standards.mdc`** - Accessibility requirements
+
+### Python Projects (`/rules/300-python-projects/`)
+Specialized directives for Python development:
+
+- **`301-virtual-environment-setup.mdc`** - Python environment management using `uv`
+- **`302-python-code-standards.mdc`** - Python coding standards
+- **`303-python-testing-standards.mdc`** - Python testing practices
 
 ## Core Principles
 
