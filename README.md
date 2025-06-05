@@ -1,6 +1,13 @@
 # Cursor Rules - AI Assistant Directives
 
-This repository contains comprehensive `.mdc` files that guide AI assistants to follow best practices for development, project management, and code quality.
+Hello,
+I am sharing my cursor rules by way of illustrating how I work with AI as my development co-pilot. I think it encapsulates a lot of 'good' practices I have come to rely on (and stolen, borrowed, improved) to help me make the most out of my agentic development experience. 
+
+This repository contains `.mdc` files that guide AI coding agents (Cursor, in particular) to follow best practices for development, project management, and code quality. Feel free to mix and match as you see fit. 
+
+Fork away. Or, branch and send me a PR for changes.
+
+- EK
 
 ## Quick Start - Import Rules to Your Project
 
