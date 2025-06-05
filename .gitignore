@@ -16,6 +16,8 @@ yarn-error.log*
 # IDE files
 .vscode/
 .idea/
+.cursor/
+.cursorrules
 *.swp
 *.swo
 *~
