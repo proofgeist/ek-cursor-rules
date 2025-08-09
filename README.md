@@ -117,6 +117,7 @@ Specialized directives for Python development:
 - **`301-virtual-environment-setup.mdc`** - Python environment management using `uv`
 - **`302-python-code-standards.mdc`** - Python coding standards
 - **`303-python-testing-standards.mdc`** - Python testing practices
+- **`304-test-scripts-and-utilities.mdc`** - Test scripts and utility file organization
 
 ## Core Principles
 
@@ -190,6 +191,7 @@ Plan Check → Conflict Resolution → Progress Track → Plan Update
 ### Python Projects
 - **Package Management**: Uses `uv` as default for Python projects
 - **Virtual Environment**: Automated setup and management
+- **Test Organization**: Clear distinction between runnable tests, test scripts, and utilities
 - **Best Practices**: Following Python-specific conventions
 
 ## Benefits
