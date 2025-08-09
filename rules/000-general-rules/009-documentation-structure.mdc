@@ -1,0 +1,186 @@
+# Documentation Structure Standards
+
+## Core Directive
+
+### Documentation Home Requirement
+- **All documentation MUST be in a `/docs` folder**
+- **Every project MUST have a central documentation home** (typically `/docs/README.md` or `/docs/index.md`)
+- **All documentation files MUST be linked from the central documentation home**
+- **No documentation should exist outside the `/docs` folder**
+
+## Documentation Organization
+
+### Required Structure
+```
+/docs/
+├── README.md              # Central documentation home
+├── getting-started/
+│   ├── installation.md
+│   ├── quick-start.md
+│   └── setup.md
+├── user-guide/
+│   ├── features.md
+│   ├── configuration.md
+│   └── troubleshooting.md
+├── developer/
+│   ├── architecture.md
+│   ├── api-reference.md
+│   ├── contributing.md
+│   └── development-setup.md
+├── deployment/
+│   ├── production.md
+│   ├── staging.md
+│   └── ci-cd.md
+└── assets/
+    ├── images/
+    ├── diagrams/
+    └── examples/
+```
+
+### Central Documentation Home Template
+Every `/docs/README.md` must include:
+
+```markdown
+# [Project Name] Documentation
+
+## Overview
+Brief description of the project and what this documentation covers.
+
+## Quick Navigation
+- [Getting Started](getting-started/)
+- [User Guide](user-guide/)
+- [Developer Documentation](developer/)
+- [Deployment](deployment/)
+
+## Documentation Structure
+- **Getting Started**: Installation, setup, and first steps
+- **User Guide**: How to use the application/features
+- **Developer**: Technical documentation for contributors
+- **Deployment**: Production deployment and CI/CD
+
+## Contributing to Documentation
+[Link to contributing guidelines]
+```
+
+## Documentation Creation Rules
+
+### Before Creating Any Documentation
+1. **Check if `/docs` folder exists** - create if missing
+2. **Verify central documentation home exists** - create if missing
+3. **Determine appropriate subfolder** for the new documentation
+4. **Plan the link structure** from central home to new doc
+
+### Documentation File Standards
+- **Use descriptive filenames** (e.g., `api-authentication.md` not `auth.md`)
+- **Use lowercase with hyphens** for filenames
+- **Include frontmatter** with title, description, and last updated
+- **Link back to central documentation home**
+- **Include table of contents** for documents > 500 words
+
+### Frontmatter Template
+```yaml
+---
+title: "Document Title"
+description: "Brief description of what this document covers"
+last_updated: "YYYY-MM-DD"
+category: "getting-started|user-guide|developer|deployment"
+---
+```
+
+## Linking Standards
+
+### Internal Documentation Links
+- **Always use relative paths** from the current document
+- **Link to specific sections** when possible (e.g., `../user-guide/features.md#authentication`)
+- **Use descriptive link text** (e.g., "See [Authentication Guide](../user-guide/authentication.md)")
+
+### Cross-Reference Requirements
+- **Every new document MUST be linked from central home**
+- **Related documents should cross-reference each other**
+- **Use "See also" sections** for related documentation
+
+## Documentation Quality Standards
+
+### Content Requirements
+- **Start with purpose** - what problem does this solve?
+- **Include examples** - code snippets, screenshots, diagrams
+- **Provide context** - when/why to use this feature
+- **Include troubleshooting** - common issues and solutions
+
+### Writing Standards
+- **Use active voice**
+- **Write for the target audience** (user vs developer)
+- **Keep sentences short and clear**
+- **Use consistent terminology**
+- **Include step-by-step instructions** for procedures
+
+## Enforcement Protocol
+
+### Pre-Documentation Checklist
+Before creating any documentation, verify:
+- [ ] `/docs` folder exists
+- [ ] Central documentation home exists and is current
+- [ ] Appropriate subfolder structure is in place
+- [ ] Link from central home is planned
+
+### Post-Documentation Requirements
+After creating documentation:
+- [ ] Add link to central documentation home
+- [ ] Update any related documentation with cross-references
+- [ ] Verify all internal links work
+- [ ] Update last_updated date in frontmatter
+
+## Communication Templates
+
+### When Creating New Documentation
+```
+📚 **Documentation Created**: [Document Name]
+- **Location**: `/docs/[subfolder]/[filename].md`
+- **Linked from**: [Central home section]
+- **Cross-references**: [List of related docs]
+- **Next steps**: [Any follow-up documentation needed]
+```
+
+### When Updating Documentation Structure
+```
+🔄 **Documentation Structure Update**
+- **Changes**: [What was modified]
+- **Impact**: [How this affects existing docs]
+- **Links updated**: [List of modified links]
+- **Central home updated**: [Yes/No]
+```
+
+## Integration with Project Workflow
+
+### Project Plan Integration
+- **Documentation tasks** must be included in project milestones
+- **Documentation review** required before feature completion
+- **Documentation updates** tracked in project plan
+
+### Git Workflow Integration
+- **Documentation changes** follow same approval process as code
+- **Documentation commits** reference related code changes
+- **Documentation review** included in pull request process
+
+## Quality Assurance
+
+### Regular Documentation Audits
+- **Monthly**: Check for broken links
+- **Per milestone**: Verify documentation completeness
+- **Per release**: Update all last_updated dates
+- **Quarterly**: Review documentation structure and organization
+
+### Documentation Metrics
+Track and maintain:
+- **Documentation coverage** (features documented vs implemented)
+- **Link health** (broken links percentage)
+- **Documentation freshness** (last updated dates)
+- **User feedback** on documentation quality
+
+---
+
+**This rule ensures all documentation is organized, discoverable, and maintainable through a centralized structure.**
+description:
+globs:
+alwaysApply: false
+---

@@ -51,50 +51,65 @@ Two import scripts are available:
 ### General Rules (`/rules/000-general-rules/`)
 Core directives that apply to all projects:
 
-1. **`01-core-directive.mdc`** - Foundation principles and methodology
+1. **`001-core-directive.mdc`** - Foundation principles and methodology
    - Functional and modular design principles
    - Approval-based workflow
    - Project plan management
    - Critical checkpoints
 
-2. **`02-pre-work-analysis.mdc`** - Before starting work
+2. **`002-pre-work-analysis.mdc`** - Before starting work
    - Plan context review
    - Request alignment checking
    - Conflict detection and resolution
 
-3. **`03-during-work-tracking.mdc`** - Active work monitoring
+3. **`003-during-work-tracking.mdc`** - Active work monitoring
    - Progress tracking
    - Decision documentation
    - Discovery logging
 
-4. **`04-post-work-updates.mdc`** - After completing work
+4. **`004-post-work-updates.mdc`** - After completing work
    - Status updates
    - Plan synchronization
    - Completion tracking
 
-5. **`06-conflict-resolution.mdc`** - Handling conflicts
+5. **`005-plan-format-standards.mdc`** - Project plan structure
+   - Required plan format and sections
+   - User persona requirements
+   - Milestone tracking standards
+
+6. **`006-conflict-resolution.mdc`** - Handling conflicts
    - Conflict detection
    - Resolution protocols
    - Communication guidelines
 
-6. **`07-integration-workflow.mdc`** - Development integration
+7. **`007-integration-workflow.mdc`** - Development integration
    - Code workflow integration
    - Documentation synchronization
    - Testing and CI/CD alignment
 
+8. **`008-documentation-style.mdc`** - Documentation writing standards
+   - Clear, concise writing guidelines
+   - Technical documentation best practices
+
+9. **`009-documentation-structure.mdc`** - Documentation organization
+   - `/docs` folder structure requirements
+   - Central documentation home
+   - Linking and cross-reference standards
+
+10. **`010-documentation-writing-standards.mdc`** - Content quality standards
+    - Writing style and structure guidelines
+    - Code example standards
+    - Review and maintenance processes
+
 ### Git Rules (`/rules/100-git-rules/`)
 Version control and collaboration standards:
 
-- **`101-commit-message-standards.mdc`** - Commit message formatting
-- **`102-branch-naming-conventions.mdc`** - Branch naming rules
-- **`103-git-workflow-standards.mdc`** - Git workflow practices
+- **`101-using-git.mdc`** - Git usage guidelines and best practices
 
 ### Design Rules (`/rules/200-design-rules/`)
-UI/UX and design system standards:
+Design thinking and user experience standards:
 
-- **`201-design-system-standards.mdc`** - Design system guidelines
-- **`202-ui-component-standards.mdc`** - UI component standards
-- **`203-accessibility-standards.mdc`** - Accessibility requirements
+- **`201-design-thinking-personas.mdc`** - User persona requirements and design thinking principles
 
 ### Python Projects (`/rules/300-python-projects/`)
 Specialized directives for Python development:
@@ -156,11 +171,19 @@ Plan Check → Conflict Resolution → Progress Track → Plan Update
 - Document approach before coding
 - Explain all decisions along the way
 - Keep project documentation current
+- All documentation in `/docs` folder with central home
+- Comprehensive linking and cross-referencing standards
 
 #### 🔄 **Continuous Integration**
 - Commit message standards
 - Branch naming conventions
 - Documentation synchronization
+
+#### 📖 **Documentation Standards**
+- Structured `/docs` folder organization
+- Central documentation home with navigation
+- Comprehensive linking and cross-referencing
+- Writing standards for clarity and consistency
 
 ## Language-Specific Features
 
