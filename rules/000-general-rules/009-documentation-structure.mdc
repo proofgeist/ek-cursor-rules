@@ -4,16 +4,16 @@
 
 ### Documentation Home Requirement
 - **All documentation MUST be in a `/docs` folder**
-- **Every project MUST have a central documentation home** (typically `/docs/README.md` or `/docs/index.md`)
+- **Every project MUST have a central documentation home**, `/docs/index.md`
 - **All documentation files MUST be linked from the central documentation home**
-- **No documentation should exist outside the `/docs` folder**
+- **Aside from the project README.md, No documentation should exist outside the `/docs` folder**
 
 ## Documentation Organization
 
 ### Required Structure
 ```
 /docs/
-├── README.md              # Central documentation home
+├── index.md              # Central documentation home
 ├── getting-started/
 │   ├── installation.md
 │   ├── quick-start.md
@@ -38,7 +38,7 @@
 ```
 
 ### Central Documentation Home Template
-Every `/docs/README.md` must include:
+Every `/docs/index.md` must include:
 
 ```markdown
 # [Project Name] Documentation

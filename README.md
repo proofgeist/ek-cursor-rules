@@ -139,8 +139,8 @@ Specialized directives for Python development:
 
 ### Location Priority
 The system looks for project plans in this order:
-1. `PROJECT_PLAN.md` (root directory)
-2. `docs/PROJECT_PLAN.md`
+1. `docs/PROJECT_PLAN.md`
+2. `PROJECT_PLAN.md` (root directory)
 3. Any file containing "project plan", "roadmap", or "milestones"
 
 ### Workflow Integration
