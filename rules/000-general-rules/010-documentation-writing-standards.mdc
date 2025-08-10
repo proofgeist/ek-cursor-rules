@@ -1,3 +1,7 @@
+---
+globs: *.md,*.txt
+alwaysApply: false
+---
 # Documentation Writing Standards
 
 ## Core Directive
