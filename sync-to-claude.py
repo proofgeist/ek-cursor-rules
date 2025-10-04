@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-Sync Cursor rules (.mdc files) to Claude.md format
+Sync Cursor rules (.mdc files) to CLAUDE.md format
 
-This script consolidates all .mdc cursor rules into a single Claude.md file
+This script consolidates .mdc cursor rules into a single CLAUDE.md file
 that can be used with Claude projects.
 
 Usage:
-    ./sync-to-claude.py [output_path]
+    ./sync-to-claude.py [--all] [output_path]
 
-    If output_path is not provided, creates Claude.md in the current directory.
+    If output_path is not provided, creates CLAUDE.md in the current directory.
+    By default, only includes core rules for a lightweight file.
+
+Options:
+    --all    Include all rule categories (creates larger file)
 
 Examples:
-    ./sync-to-claude.py                          # Creates ./Claude.md
-    ./sync-to-claude.py /path/to/project         # Creates /path/to/project/Claude.md
-    ./sync-to-claude.py /path/to/custom.md       # Creates custom.md at specified path
+    ./sync-to-claude.py                          # Creates lightweight ./CLAUDE.md
+    ./sync-to-claude.py --all                    # Creates full ./CLAUDE.md with all rules
+    ./sync-to-claude.py /path/to/project         # Creates /path/to/project/CLAUDE.md
+    ./sync-to-claude.py --all /path/to/custom.md # Creates full custom.md at specified path
 """
 
 import os
@@ -37,27 +42,54 @@ def extract_frontmatter_and_content(file_path: Path) -> Tuple[str, str]:
     return content
 
 
-def get_rule_files(rules_dir: Path) -> List[Tuple[str, Path]]:
+def get_rule_files(rules_dir: Path, include_all: bool = False) -> List[Tuple[str, Path]]:
     """Get all .mdc files organized by directory"""
     rule_categories = []
 
     # Define the order of categories
-    category_order = [
-        '000-general-rules',
-        '100-git-rules',
-        '200-design-rules',
-        '300-python-projects',
-        '400-versioning-rules',
-        '500-nodejs-projects',
-        '600-database-rules'
-    ]
+    if include_all:
+        category_order = [
+            '000-general-rules',
+            '100-git-rules',
+            '200-design-rules',
+            '300-python-projects',
+            '400-versioning-rules',
+            '500-nodejs-projects',
+            '600-database-rules'
+        ]
+    else:
+        # Lightweight version - only essential rules
+        category_order = [
+            '000-general-rules',  # Core directives only
+            '100-git-rules',      # Basic git practices
+        ]
+        
+        # Define essential files within each category for lightweight mode
+        essential_files = {
+            '000-general-rules': [
+                '001-core-directive.mdc',
+                '002-pre-work-analysis.mdc', 
+                '003-during-work-tracking.mdc',
+                '004-post-work-updates.mdc',
+                '005-plan-format-standards.mdc'
+            ],
+            '100-git-rules': [
+                '101-using-git'
+            ]
+        }
 
     for category in category_order:
         category_path = rules_dir / category
         if not category_path.exists():
             continue
 
-        mdc_files = sorted(category_path.glob('*.mdc'))
+        if include_all:
+            mdc_files = sorted(category_path.glob('*.mdc'))
+        else:
+            # Only include essential files in lightweight mode
+            essential_list = essential_files.get(category, [])
+            mdc_files = [category_path / f for f in essential_list if (category_path / f).exists()]
+            
         for mdc_file in mdc_files:
             rule_categories.append((category, mdc_file))
 
@@ -78,10 +110,10 @@ def get_category_title(category_name: str) -> str:
     return category_map.get(category_name, category_name.replace('-', ' ').title())
 
 
-def generate_claude_md(rules_dir: Path, output_path: Path) -> None:
+def generate_claude_md(rules_dir: Path, output_path: Path, include_all: bool = False) -> None:
     """Generate Claude.md from all cursor rules"""
 
-    rule_files = get_rule_files(rules_dir)
+    rule_files = get_rule_files(rules_dir, include_all)
 
     if not rule_files:
         print(f"❌ No .mdc files found in {rules_dir}")
@@ -140,20 +172,25 @@ def generate_claude_md(rules_dir: Path, output_path: Path) -> None:
 
 
 def main():
+    # Parse command line arguments
+    include_all = '--all' in sys.argv
+    if include_all:
+        sys.argv.remove('--all')
+    
     # Determine output path
     if len(sys.argv) > 1:
         output_arg = sys.argv[1]
         output_path = Path(output_arg).resolve()
 
-        # If path is a directory, create Claude.md inside it
+        # If path is a directory, create CLAUDE.md inside it
         if output_path.is_dir():
-            output_path = output_path / "Claude.md"
+            output_path = output_path / "CLAUDE.md"
         # If path doesn't have .md extension, add it
         elif not str(output_path).endswith('.md'):
             output_path = Path(str(output_path) + '.md')
     else:
         # Default to current directory
-        output_path = Path.cwd() / "Claude.md"
+        output_path = Path.cwd() / "CLAUDE.md"
 
     # Find rules directory (assume script is in project root)
     script_dir = Path(__file__).parent.resolve()
@@ -166,9 +203,10 @@ def main():
 
     print(f"📂 Reading rules from: {rules_dir}")
     print(f"📄 Output file: {output_path}")
+    print(f"🔧 Mode: {'All rules' if include_all else 'Lightweight (core rules only)'}")
     print("")
 
-    generate_claude_md(rules_dir, output_path)
+    generate_claude_md(rules_dir, output_path, include_all)
 
 
 if __name__ == "__main__":

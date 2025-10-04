@@ -37,8 +37,8 @@ If you want to contribute or customize the rules:
 - `import-cursor-rules.sh` (Bash - Unix/Linux/macOS)
 - `import-cursor-rules.py` (Python - Cross-platform)
 
-**For Claude Code:**
-- `sync-to-claude.py` (Generates single Claude.md file)
+**For Claude Projects:**
+- `sync-to-claude.py` (Generates single CLAUDE.md file)
 
 #### Basic Usage:
 ```bash
@@ -48,8 +48,11 @@ If you want to contribute or customize the rules:
 # Cursor IDE: Python version (cross-platform)
 ./import-cursor-rules.py /path/to/my-project
 
-# Claude Code: Generate Claude.md file
+# Claude Projects: Generate lightweight CLAUDE.md (recommended)
 ./sync-to-claude.py /path/to/my-project
+
+# Claude Projects: Generate full CLAUDE.md with all rules
+./sync-to-claude.py --all /path/to/my-project
 ```
 
 #### Advanced Options:
@@ -67,10 +70,47 @@ If you want to contribute or customize the rules:
 ./import-cursor-rules.sh --help
 ```
 
-#### Link Types:
+#### Cursor IDE Link Types:
 - **`copy`** (default): Independent copies, safe for modification
 - **`symlink`**: Links to source rules, updates automatically
 - **`hardlink`**: Shared file data, updates with source changes
+- **`dirsymlink`**: Directory-level symlink (most efficient)
+
+#### Claude Projects Modes:
+- **Lightweight** (default): Core rules only (~10KB, 5 files) - Recommended
+- **Full** (`--all`): All rule categories (~200KB, 26 files) - When comprehensive guidance needed
+
+### Claude Projects Integration
+
+The `sync-to-claude.py` script consolidates cursor rules into a single `CLAUDE.md` file for use with Claude Projects.
+
+**Lightweight Mode** (default):
+```bash
+./sync-to-claude.py /path/to/project
+```
+Includes only essential rules:
+- Core directives (project planning, workflow, updates)
+- Basic Git practices
+- **Result**: ~10KB file with 5 core rule files
+
+**Full Mode** (comprehensive):
+```bash
+./sync-to-claude.py --all /path/to/project
+```
+Includes all rule categories:
+- General rules, Git, Design, Python, Versioning, Node.js, Database
+- **Result**: ~200KB file with 26 rule files
+
+**Why Lightweight?**
+- Faster AI response times
+- Lower token usage
+- Focused on core development methodology
+- Sufficient for most projects
+
+**When to Use Full Mode?**
+- Technology-specific guidance needed (Python, Node.js, Database)
+- Complex projects requiring comprehensive standards
+- Reference documentation for team onboarding
 
 ## Directory Structure
 
