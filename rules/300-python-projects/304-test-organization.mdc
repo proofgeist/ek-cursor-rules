@@ -1,0 +1,406 @@
+---
+description: Python test file organization and structure standards
+globs: ["**/tests/**/*.py", "**/test_*.py"]
+alwaysApply: true
+---
+
+# Python Test Organization Standards
+
+## Test File Classification
+
+### File Types
+- **Runnable Tests**: Standard pytest files that test actual functionality
+- **Test Scripts**: Utility scripts that help with testing but aren't tests themselves
+- **Test Utilities**: Helper modules and functions for testing
+- **Test Data**: Sample data, fixtures, and test resources
+
+### Organization Requirements
+- **Runnable tests** go in `tests/` directory with standard naming
+- **Test scripts** go in `tests/scripts/` directory
+- **Test utilities** go in `tests/utils/` directory
+- **Test data** goes in `tests/data/` directory
+- **Clear naming conventions** to distinguish between types
+
+## Directory Structure
+
+### Standard Test Layout
+
+```
+project-root/
+├── src/
+│   └── myproject/
+│       ├── __init__.py
+│       ├── core.py
+│       └── api.py
+├── tests/
+│   ├── __init__.py            # Makes tests a package
+│   ├── conftest.py            # Pytest configuration and fixtures
+│   ├── test_core.py           # Tests for core functionality
+│   ├── test_api.py            # Tests for API endpoints
+│   ├── test_integration.py    # Integration tests
+│   ├── scripts/               # Test utility scripts
+│   │   ├── setup_test_db.py
+│   │   ├── generate_test_data.py
+│   │   └── cleanup_test_env.py
+│   ├── utils/                 # Test helper modules
+│   │   ├── __init__.py
+│   │   ├── factories.py
+│   │   ├── fixtures.py
+│   │   └── assertions.py
+│   └── data/                  # Test data files
+│       ├── sample_data.json
+│       └── test_fixtures.yaml
+└── pytest.ini
+```
+
+## Runnable Tests (`tests/`)
+
+### Naming Convention
+- Files: `test_*.py` or `*_test.py`
+- Classes: `Test*` (e.g., `TestUserService`)
+- Functions: `test_*` (e.g., `test_create_user`)
+
+### Test File Structure
+
+```python
+# tests/test_user_service.py
+"""Tests for user service functionality."""
+
+import pytest
+from myproject.services.user_service import UserService
+from tests.utils.factories import UserFactory
+
+class TestUserService:
+    """Test suite for UserService."""
+
+    @pytest.fixture
+    def user_service(self):
+        """Provide a user service instance."""
+        return UserService()
+
+    def test_create_user(self, user_service):
+        """Test creating a new user."""
+        user_data = UserFactory.build()
+        user = user_service.create(user_data)
+
+        assert user.id is not None
+        assert user.email == user_data.email
+
+    def test_create_user_with_duplicate_email(self, user_service):
+        """Test that duplicate emails raise error."""
+        user_data = UserFactory.build(email="test@example.com")
+        user_service.create(user_data)
+
+        with pytest.raises(ValueError, match="Email already exists"):
+            user_service.create(user_data)
+
+    @pytest.mark.parametrize("age,expected", [
+        (17, False),
+        (18, True),
+        (25, True),
+    ])
+    def test_is_adult(self, age, expected):
+        """Test adult age verification."""
+        user = UserFactory.build(age=age)
+        assert user.is_adult() == expected
+```
+
+### Test Organization Patterns
+
+**Arrange-Act-Assert (AAA):**
+```python
+def test_user_creation():
+    # Arrange
+    user_data = {"email": "test@example.com", "name": "Test"}
+    user_service = UserService()
+
+    # Act
+    user = user_service.create(user_data)
+
+    # Assert
+    assert user.email == "test@example.com"
+    assert user.name == "Test"
+```
+
+**Given-When-Then (BDD):**
+```python
+def test_login_with_valid_credentials():
+    # Given a user exists
+    user = create_user(email="test@example.com", password="secret123")
+
+    # When they attempt to login
+    result = auth_service.login("test@example.com", "secret123")
+
+    # Then login succeeds
+    assert result.success is True
+    assert result.token is not None
+```
+
+## Test Scripts (`tests/scripts/`)
+
+### Purpose
+Utility scripts that help with testing but aren't tests themselves:
+- Database setup/teardown
+- Test data generation
+- Environment configuration
+- Performance benchmarking
+- Result validation
+
+### Naming Convention
+- Descriptive names **without** `test_` prefix
+- Clear action verbs: `setup_`, `generate_`, `cleanup_`, `validate_`
+
+### Example Scripts
+
+```python
+# tests/scripts/setup_test_db.py
+"""Script to set up test database."""
+
+import sys
+from pathlib import Path
+from myproject.database import Database
+
+def setup_test_database():
+    """Create and populate test database."""
+    db = Database.connect(test_mode=True)
+    db.create_tables()
+    db.seed_data('tests/data/seed.sql')
+    print("✅ Test database set up successfully")
+
+if __name__ == "__main__":
+    setup_test_database()
+```
+
+```python
+# tests/scripts/generate_test_data.py
+"""Generate sample test data."""
+
+import json
+from faker import Faker
+from pathlib import Path
+
+fake = Faker()
+
+def generate_users(count=100):
+    """Generate fake user data."""
+    users = []
+    for _ in range(count):
+        users.append({
+            "email": fake.email(),
+            "name": fake.name(),
+            "age": fake.random_int(18, 80),
+        })
+
+    output_file = Path("tests/data/users.json")
+    output_file.parent.mkdir(exist_ok=True)
+    output_file.write_text(json.dumps(users, indent=2))
+    print(f"✅ Generated {count} users to {output_file}")
+
+if __name__ == "__main__":
+    generate_users(100)
+```
+
+## Test Data (`tests/data/`)
+
+### Organization
+
+```
+tests/data/
+├── fixtures/              # Static test fixtures
+│   ├── users.json
+│   └── products.json
+├── snapshots/             # Snapshot test data
+│   └── api_responses/
+├── seeds/                 # Database seed files
+│   └── test_seed.sql
+└── samples/               # Sample files for testing
+    ├── sample.pdf
+    └── sample.csv
+```
+
+### Fixtures
+
+```json
+// tests/data/fixtures/users.json
+[
+  {
+    "id": "1",
+    "email": "admin@example.com",
+    "role": "admin",
+    "name": "Admin User"
+  },
+  {
+    "id": "2",
+    "email": "user@example.com",
+    "role": "user",
+    "name": "Regular User"
+  }
+]
+```
+
+```python
+# tests/conftest.py - Loading fixtures
+import json
+import pytest
+from pathlib import Path
+
+@pytest.fixture
+def user_fixtures():
+    """Load user fixtures from JSON."""
+    fixture_path = Path("tests/data/fixtures/users.json")
+    return json.loads(fixture_path.read_text())
+
+@pytest.fixture
+def admin_user(user_fixtures):
+    """Get admin user from fixtures."""
+    return next(u for u in user_fixtures if u["role"] == "admin")
+```
+
+## conftest.py Configuration
+
+### Shared Fixtures
+
+```python
+# tests/conftest.py
+"""Pytest configuration and shared fixtures."""
+
+import pytest
+from myproject.database import Database
+from myproject.app import create_app
+
+@pytest.fixture(scope="session")
+def app():
+    """Create application instance."""
+    return create_app(config="testing")
+
+@pytest.fixture(scope="session")
+def db():
+    """Create database connection."""
+    database = Database.connect(test_mode=True)
+    database.create_tables()
+    yield database
+    database.drop_tables()
+    database.disconnect()
+
+@pytest.fixture
+def client(app):
+    """Create test client."""
+    return app.test_client()
+
+@pytest.fixture(autouse=True)
+def reset_db(db):
+    """Reset database before each test."""
+    db.truncate_all_tables()
+    yield
+    db.truncate_all_tables()
+
+# Pytest configuration
+def pytest_configure(config):
+    """Configure pytest."""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests"
+    )
+```
+
+## pytest.ini Configuration
+
+```ini
+# pytest.ini
+[pytest]
+testpaths = tests
+python_files = test_*.py *_test.py
+python_classes = Test*
+python_functions = test_*
+
+# Markers
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    slow: Slow-running tests
+    smoke: Smoke tests
+
+# Coverage
+addopts =
+    --strict-markers
+    --cov=src/myproject
+    --cov-report=term-missing
+    --cov-report=html
+    -v
+
+# Warnings
+filterwarnings =
+    error
+    ignore::DeprecationWarning
+```
+
+## Test Execution
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_user_service.py
+
+# Run specific test
+pytest tests/test_user_service.py::TestUserService::test_create_user
+
+# Run with markers
+pytest -m unit              # Only unit tests
+pytest -m "not slow"        # Skip slow tests
+pytest -m "integration"     # Only integration tests
+
+# Run with coverage
+pytest --cov=src/myproject --cov-report=html
+
+# Run in parallel
+pytest -n auto
+
+# Run with verbose output
+pytest -vv
+```
+
+### Running Scripts
+
+```bash
+# Run test setup scripts
+python tests/scripts/setup_test_db.py
+python tests/scripts/generate_test_data.py
+
+# Run cleanup
+python tests/scripts/cleanup_test_env.py
+```
+
+## Best Practices
+
+### Test Isolation
+- Each test should be independent
+- Use fixtures to set up clean state
+- Clean up after tests (databases, files, etc.)
+- Avoid shared mutable state
+
+### Test Naming
+- Use descriptive names that explain what is being tested
+- Include the expected outcome
+- Follow pattern: `test_<action>_<expected_result>`
+
+### Test Organization
+- Group related tests in classes
+- Use marks for categorization
+- Keep test files focused on single module/feature
+- Mirror source code structure
+
+### Performance
+- Keep unit tests fast (< 100ms each)
+- Mark slow tests with `@pytest.mark.slow`
+- Use test parallelization for large suites
+- Mock external dependencies
+
+---
+
+**Organize tests systematically for maintainability and clarity.**

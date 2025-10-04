@@ -1,0 +1,724 @@
+---
+description: TypeScript coding standards and best practices
+globs: ["**/*.ts", "**/*.tsx", "**/tsconfig.json"]
+alwaysApply: true
+---
+
+# TypeScript Standards
+
+## TypeScript Configuration
+
+### tsconfig.json Standards
+
+**Use strict mode and modern features:**
+
+```json
+{
+  "compilerOptions": {
+    // Type Checking
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+
+    // Modules
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+
+    // Emit
+    "noEmit": true,  // If using bundler (Vite, Next.js)
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+
+    // JavaScript Support
+    "allowJs": true,
+    "checkJs": false,
+
+    // Interop
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+
+    // Language Features
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",  // or "react-jsx" for React 17+
+    "useDefineForClassFields": true,
+
+    // Paths
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/types/*": ["./src/types/*"]
+    },
+
+    // Skip lib check for faster builds
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist", "build", ".next"]
+}
+```
+
+### Project Structure
+
+```
+src/
+├── types/
+│   ├── index.ts           # Re-export all types
+│   ├── api.ts             # API types
+│   ├── models.ts          # Data models
+│   └── utils.ts           # Utility types
+├── lib/
+│   ├── db.ts
+│   └── utils.ts
+├── components/
+│   └── Button.tsx
+└── index.ts
+```
+
+## Type Safety Best Practices
+
+### Use Strict Types
+
+```typescript
+// Good - Explicit types
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'user' | 'admin' | 'moderator';
+  createdAt: Date;
+}
+
+function getUser(id: string): Promise<User | null> {
+  // implementation
+}
+
+// Bad - Any types
+function getUser(id: any): any {
+  // implementation
+}
+```
+
+### Avoid `any`
+
+```typescript
+// Bad - Using any
+function processData(data: any) {
+  return data.value.toUpperCase();
+}
+
+// Good - Use unknown and type guards
+function processData(data: unknown) {
+  if (isDataWithValue(data)) {
+    return data.value.toUpperCase();
+  }
+  throw new Error('Invalid data structure');
+}
+
+function isDataWithValue(data: unknown): data is { value: string } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'value' in data &&
+    typeof data.value === 'string'
+  );
+}
+```
+
+### Use Type Guards
+
+```typescript
+// Type guard for null/undefined
+function isNotNull<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
+}
+
+// Usage
+const users = await getUsers();
+const activeUsers = users.filter(isNotNull);
+
+// Type guard for object shape
+interface Post {
+  id: string;
+  title: string;
+}
+
+function isPost(value: unknown): value is Post {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'title' in value &&
+    typeof value.id === 'string' &&
+    typeof value.title === 'string'
+  );
+}
+
+// Discriminated unions
+type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+function handleResult<T>(result: Result<T>) {
+  if (result.success) {
+    console.log(result.data); // TypeScript knows data exists
+  } else {
+    console.error(result.error); // TypeScript knows error exists
+  }
+}
+```
+
+### Utility Types
+
+```typescript
+// Built-in utility types
+type UserInput = Omit<User, 'id' | 'createdAt'>;
+type PartialUser = Partial<User>;
+type RequiredUser = Required<PartialUser>;
+type UserKeys = keyof User;
+type UserRecord = Record<string, User>;
+type UserPick = Pick<User, 'id' | 'email'>;
+
+// Custom utility types
+type Nullable<T> = T | null;
+type Optional<T> = T | undefined;
+type AsyncReturnType<T extends (...args: any) => Promise<any>> =
+  T extends (...args: any) => Promise<infer R> ? R : never;
+
+// Make specific fields optional
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+// Make specific fields required
+type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
+
+// Deep partial
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+```
+
+## Interface vs Type
+
+### When to Use Each
+
+```typescript
+// Use interface for object shapes and when you need extension
+interface BaseUser {
+  id: string;
+  email: string;
+}
+
+interface AdminUser extends BaseUser {
+  role: 'admin';
+  permissions: string[];
+}
+
+// Use type for unions, intersections, and mapped types
+type Status = 'pending' | 'active' | 'inactive';
+type ID = string | number;
+type UserOrAdmin = User | Admin;
+type ReadonlyUser = Readonly<User>;
+
+// Type for computed property names
+type EventMap = {
+  [K in keyof HTMLElementEventMap as `on${Capitalize<K>}`]: (
+    event: HTMLElementEventMap[K]
+  ) => void;
+};
+```
+
+### Prefer Interface for Objects
+
+```typescript
+// Good - Interface for object shapes
+interface Config {
+  apiUrl: string;
+  timeout: number;
+  retries: number;
+}
+
+// Also acceptable - Type alias
+type Config = {
+  apiUrl: string;
+  timeout: number;
+  retries: number;
+};
+```
+
+## Generics
+
+### Generic Functions
+
+```typescript
+// Good - Generic with constraints
+function firstElement<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+// Generic with multiple type parameters
+function map<T, U>(arr: T[], fn: (item: T) => U): U[] {
+  return arr.map(fn);
+}
+
+// Generic with constraints
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+// Generic with default type
+function createArray<T = string>(length: number, value: T): T[] {
+  return Array(length).fill(value);
+}
+```
+
+### Generic Types
+
+```typescript
+// Generic interface
+interface Repository<T> {
+  find(id: string): Promise<T | null>;
+  findAll(): Promise<T[]>;
+  create(data: Omit<T, 'id'>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T>;
+  delete(id: string): Promise<void>;
+}
+
+// Generic class
+class InMemoryRepository<T extends { id: string }> implements Repository<T> {
+  private items: T[] = [];
+
+  async find(id: string): Promise<T | null> {
+    return this.items.find(item => item.id === id) ?? null;
+  }
+
+  async findAll(): Promise<T[]> {
+    return this.items;
+  }
+
+  async create(data: Omit<T, 'id'>): Promise<T> {
+    const item = { ...data, id: crypto.randomUUID() } as T;
+    this.items.push(item);
+    return item;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T> {
+    const index = this.items.findIndex(item => item.id === id);
+    if (index === -1) throw new Error('Not found');
+    this.items[index] = { ...this.items[index], ...data };
+    return this.items[index];
+  }
+
+  async delete(id: string): Promise<void> {
+    this.items = this.items.filter(item => item.id !== id);
+  }
+}
+```
+
+## React TypeScript Standards
+
+### Component Props
+
+```typescript
+// Function component with props
+interface ButtonProps {
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  onClick?: () => void;
+  disabled?: boolean;
+}
+
+export function Button({
+  children,
+  variant = 'primary',
+  size = 'md',
+  onClick,
+  disabled = false
+}: ButtonProps) {
+  return (
+    <button
+      className={`btn btn-${variant} btn-${size}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Extending HTML attributes
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+}
+
+export function Input({ label, error, ...props }: InputProps) {
+  return (
+    <div>
+      <label>{label}</label>
+      <input {...props} />
+      {error && <span className="error">{error}</span>}
+    </div>
+  );
+}
+```
+
+### Hooks Typing
+
+```typescript
+// useState with explicit type
+const [user, setUser] = useState<User | null>(null);
+const [items, setItems] = useState<string[]>([]);
+
+// useRef with element type
+const inputRef = useRef<HTMLInputElement>(null);
+
+// useReducer with typed state and actions
+type State = {
+  count: number;
+  status: 'idle' | 'loading' | 'success' | 'error';
+};
+
+type Action =
+  | { type: 'increment' }
+  | { type: 'decrement' }
+  | { type: 'setStatus'; status: State['status'] };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'increment':
+      return { ...state, count: state.count + 1 };
+    case 'decrement':
+      return { ...state, count: state.count - 1 };
+    case 'setStatus':
+      return { ...state, status: action.status };
+  }
+}
+
+// Custom hooks with generic types
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return [storedValue, setValue] as const;
+}
+```
+
+### Event Handlers
+
+```typescript
+// Typed event handlers
+function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+  console.log(event.currentTarget.value);
+}
+
+function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+  console.log(event.target.value);
+}
+
+function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  // ...
+}
+
+// Generic event handler
+type EventHandler<T extends HTMLElement> = (
+  event: React.MouseEvent<T>
+) => void;
+
+const handleButtonClick: EventHandler<HTMLButtonElement> = (event) => {
+  console.log(event.currentTarget.textContent);
+};
+```
+
+## API & Data Fetching
+
+### Type-Safe API Calls
+
+```typescript
+// API response types
+interface ApiResponse<T> {
+  data: T;
+  message: string;
+  success: boolean;
+}
+
+interface ApiError {
+  message: string;
+  code: string;
+  details?: Record<string, string[]>;
+}
+
+// Generic fetch wrapper
+async function fetchApi<T>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.message);
+  }
+
+  return response.json();
+}
+
+// Usage with specific types
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+const user = await fetchApi<User>('/api/users/123');
+const users = await fetchApi<User[]>('/api/users');
+```
+
+### Zod Integration
+
+```typescript
+import { z } from 'zod';
+
+// Define schema
+const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().min(2),
+  role: z.enum(['user', 'admin', 'moderator']),
+  createdAt: z.string().datetime().transform(s => new Date(s)),
+});
+
+// Infer TypeScript type from schema
+type User = z.infer<typeof UserSchema>;
+
+// Validate and parse
+function parseUser(data: unknown): User {
+  return UserSchema.parse(data);
+}
+
+// Safe parse with error handling
+function safeParse User(data: unknown): User | null {
+  const result = UserSchema.safeParse(data);
+  if (result.success) {
+    return result.data;
+  }
+  console.error(result.error);
+  return null;
+}
+```
+
+## Error Handling
+
+### Type-Safe Errors
+
+```typescript
+// Custom error classes
+class AppError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public statusCode: number = 500
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+class ValidationError extends AppError {
+  constructor(
+    message: string,
+    public fields: Record<string, string[]>
+  ) {
+    super(message, 'VALIDATION_ERROR', 400);
+    this.name = 'ValidationError';
+  }
+}
+
+// Type-safe error handling
+function handleError(error: unknown): never {
+  if (error instanceof ValidationError) {
+    console.error('Validation failed:', error.fields);
+  } else if (error instanceof AppError) {
+    console.error(`${error.code}: ${error.message}`);
+  } else if (error instanceof Error) {
+    console.error(error.message);
+  } else {
+    console.error('Unknown error:', error);
+  }
+  throw error;
+}
+
+// Result type pattern
+type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
+
+async function fetchUser(id: string): Promise<Result<User>> {
+  try {
+    const user = await fetchApi<User>(`/api/users/${id}`);
+    return { ok: true, value: user };
+  } catch (error) {
+    return { ok: false, error: error as Error };
+  }
+}
+```
+
+## Advanced Patterns
+
+### Builder Pattern
+
+```typescript
+class QueryBuilder<T> {
+  private filters: Array<(item: T) => boolean> = [];
+  private sortFn?: (a: T, b: T) => number;
+  private limitValue?: number;
+
+  where(predicate: (item: T) => boolean): this {
+    this.filters.push(predicate);
+    return this;
+  }
+
+  orderBy(key: keyof T, direction: 'asc' | 'desc' = 'asc'): this {
+    this.sortFn = (a, b) => {
+      const aVal = a[key];
+      const bVal = b[key];
+      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return direction === 'asc' ? comparison : -comparison;
+    };
+    return this;
+  }
+
+  limit(n: number): this {
+    this.limitValue = n;
+    return this;
+  }
+
+  execute(data: T[]): T[] {
+    let result = [...data];
+
+    // Apply filters
+    for (const filter of this.filters) {
+      result = result.filter(filter);
+    }
+
+    // Apply sorting
+    if (this.sortFn) {
+      result.sort(this.sortFn);
+    }
+
+    // Apply limit
+    if (this.limitValue) {
+      result = result.slice(0, this.limitValue);
+    }
+
+    return result;
+  }
+}
+
+// Usage
+const activeAdults = new QueryBuilder<User>()
+  .where(u => u.age >= 18)
+  .where(u => u.isActive)
+  .orderBy('createdAt', 'desc')
+  .limit(10)
+  .execute(users);
+```
+
+### Template Literal Types
+
+```typescript
+// HTTP methods
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+// Route patterns
+type Route = `/${string}`;
+type ApiRoute = `/api${Route}`;
+
+// Event names
+type EventName<T extends string> = `on${Capitalize<T>}`;
+type ClickEvent = EventName<'click'>; // 'onClick'
+
+// Branded types
+type Brand<K, T> = K & { __brand: T };
+type UserId = Brand<string, 'UserId'>;
+type Email = Brand<string, 'Email'>;
+
+function createUserId(id: string): UserId {
+  return id as UserId;
+}
+
+function sendEmail(to: Email, subject: string) {
+  // ...
+}
+
+const userId = createUserId('123');
+const email = 'user@example.com' as Email;
+sendEmail(email, 'Hello'); // OK
+// sendEmail(userId, 'Hello'); // Error!
+```
+
+## Testing with TypeScript
+
+### Type-Safe Tests
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('User service', () => {
+  it('should create a user', async () => {
+    const input: Omit<User, 'id' | 'createdAt'> = {
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'user',
+    };
+
+    const user = await userService.create(input);
+
+    expect(user).toMatchObject<Partial<User>>({
+      email: input.email,
+      name: input.name,
+      role: input.role,
+    });
+  });
+});
+
+// Mock with types
+const mockUserRepository: Repository<User> = {
+  find: vi.fn(),
+  findAll: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+};
+```
+
+---
+
+**Follow these TypeScript standards for type-safe, maintainable code.**

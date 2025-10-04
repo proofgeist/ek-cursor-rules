@@ -1,13 +1,9 @@
 ---
-description: 
-globs: 
+description: Project plan format and structure standards
+globs: ["**/PROJECT_PLAN.md", "**/docs/PROJECT_PLAN.md"]
 alwaysApply: true
 ---
----
-description: Project status and post-work updates
-globs: 
-alwaysApply: true
----
+
 # Project Plan Format Standards
 
 ## Required Plan Structure

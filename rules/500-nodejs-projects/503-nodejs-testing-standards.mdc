@@ -1,0 +1,524 @@
+---
+description: Node.js testing standards and practices
+globs: ["**/*.test.js", "**/*.spec.js", "**/*.test.ts", "**/*.spec.ts"]
+alwaysApply: true
+---
+
+# Node.js Testing Standards
+
+## Testing Framework
+
+### Default: Vitest (Recommended)
+**Use Vitest as the default testing framework for Node.js projects**
+
+#### Why Vitest?
+- Fast and lightweight
+- Great TypeScript support
+- Compatible with Jest API
+- Built-in coverage
+- ESM first
+
+#### Installation
+```bash
+pnpm add -D vitest
+```
+
+#### Alternative: Jest
+Use Jest for projects requiring:
+- Extensive ecosystem compatibility
+- Established patterns
+- Legacy code compatibility
+
+## Test File Organization
+
+### Directory Structure
+```
+project-root/
+├── src/
+│   ├── users/
+│   │   ├── user-service.js
+│   │   └── user-service.test.js       # Co-located tests
+│   └── utils/
+│       ├── validators.js
+│       └── validators.test.js
+├── tests/                              # Integration/E2E tests
+│   ├── integration/
+│   │   └── api.test.js
+│   ├── e2e/
+│   │   └── user-flow.test.js
+│   ├── fixtures/                       # Test data
+│   │   └── users.json
+│   └── helpers/                        # Test utilities
+│       └── setup.js
+└── vitest.config.js
+```
+
+### Test File Naming
+- Unit tests: `<filename>.test.js` or `<filename>.spec.js`
+- Integration tests: `<feature>.integration.test.js`
+- E2E tests: `<flow>.e2e.test.js`
+
+## Test Configuration
+
+### vitest.config.js
+```javascript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '**/*.test.js',
+        '**/*.config.js'
+      ]
+    },
+    setupFiles: ['./tests/helpers/setup.js']
+  }
+});
+```
+
+### package.json Scripts
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:unit": "vitest run --reporter=verbose",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e"
+  }
+}
+```
+
+## Unit Testing Standards
+
+### Test Structure
+```javascript
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { UserService } from './user-service.js';
+
+describe('UserService', () => {
+  let userService;
+
+  beforeEach(() => {
+    userService = new UserService();
+  });
+
+  afterEach(() => {
+    // Cleanup
+  });
+
+  describe('createUser', () => {
+    it('should create a user with valid data', async () => {
+      const userData = { email: 'test@example.com', name: 'Test User' };
+      const user = await userService.createUser(userData);
+
+      expect(user).toBeDefined();
+      expect(user.email).toBe(userData.email);
+      expect(user.id).toBeDefined();
+    });
+
+    it('should throw error for invalid email', async () => {
+      const userData = { email: 'invalid', name: 'Test' };
+
+      await expect(userService.createUser(userData))
+        .rejects
+        .toThrow('Invalid email format');
+    });
+
+    it('should hash password before storing', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'plain123'
+      };
+      const user = await userService.createUser(userData);
+
+      expect(user.password).not.toBe('plain123');
+      expect(user.password).toMatch(/^\$2[aby]\$/); // bcrypt hash pattern
+    });
+  });
+});
+```
+
+### Assertion Best Practices
+```javascript
+// Be specific with assertions
+expect(result).toBe(expected);           // Exact equality
+expect(object).toEqual(expectedObject);  // Deep equality
+expect(array).toHaveLength(3);
+expect(string).toContain('substring');
+expect(number).toBeGreaterThan(0);
+expect(fn).toThrow(ErrorClass);
+
+// Use custom matchers for clarity
+expect(user).toMatchObject({
+  email: expect.stringContaining('@'),
+  createdAt: expect.any(Date)
+});
+```
+
+## Mocking & Stubbing
+
+### Module Mocking with Vitest
+```javascript
+import { vi } from 'vitest';
+import { sendEmail } from './email-service.js';
+
+// Mock entire module
+vi.mock('./email-service.js', () => ({
+  sendEmail: vi.fn()
+}));
+
+describe('User Registration', () => {
+  it('should send welcome email', async () => {
+    sendEmail.mockResolvedValue({ success: true });
+
+    await registerUser({ email: 'test@example.com' });
+
+    expect(sendEmail).toHaveBeenCalledWith({
+      to: 'test@example.com',
+      template: 'welcome'
+    });
+  });
+});
+```
+
+### Spying on Functions
+```javascript
+import { vi } from 'vitest';
+
+describe('Logger', () => {
+  it('should log errors', () => {
+    const consoleSpy = vi.spyOn(console, 'error');
+
+    logger.error('Test error');
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Test error')
+    );
+
+    consoleSpy.mockRestore();
+  });
+});
+```
+
+### Database Mocking
+```javascript
+import { vi } from 'vitest';
+
+// Mock database module
+vi.mock('./database.js', () => ({
+  default: {
+    query: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn()
+  }
+}));
+
+describe('User Repository', () => {
+  it('should query users from database', async () => {
+    const mockUsers = [{ id: 1, name: 'John' }];
+    db.query.mockResolvedValue(mockUsers);
+
+    const users = await userRepository.findAll();
+
+    expect(db.query).toHaveBeenCalledWith('SELECT * FROM users');
+    expect(users).toEqual(mockUsers);
+  });
+});
+```
+
+## Integration Testing
+
+### API Testing
+```javascript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import request from 'supertest';
+import { app } from '../src/app.js';
+import { setupTestDB, teardownTestDB } from './helpers/db.js';
+
+describe('User API', () => {
+  beforeAll(async () => {
+    await setupTestDB();
+  });
+
+  afterAll(async () => {
+    await teardownTestDB();
+  });
+
+  describe('POST /api/users', () => {
+    it('should create a new user', async () => {
+      const response = await request(app)
+        .post('/api/users')
+        .send({
+          email: 'test@example.com',
+          password: 'password123'
+        })
+        .expect(201);
+
+      expect(response.body).toMatchObject({
+        email: 'test@example.com',
+        id: expect.any(String)
+      });
+      expect(response.body.password).toBeUndefined();
+    });
+
+    it('should return 400 for invalid data', async () => {
+      const response = await request(app)
+        .post('/api/users')
+        .send({ email: 'invalid' })
+        .expect(400);
+
+      expect(response.body.error).toBeDefined();
+    });
+  });
+});
+```
+
+### Test Database Setup
+```javascript
+// tests/helpers/db.js
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+
+let mongoServer;
+
+export async function setupTestDB() {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+}
+
+export async function teardownTestDB() {
+  await mongoose.connection.dropDatabase();
+  await mongoose.connection.close();
+  await mongoServer.stop();
+}
+
+export async function clearTestDB() {
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    await collections[key].deleteMany();
+  }
+}
+```
+
+## E2E Testing
+
+### Using Playwright (for web apps)
+```javascript
+import { test, expect } from '@playwright/test';
+
+test.describe('User Authentication', () => {
+  test('should login successfully', async ({ page }) => {
+    await page.goto('http://localhost:3000/login');
+
+    await page.fill('[name="email"]', 'test@example.com');
+    await page.fill('[name="password"]', 'password123');
+    await page.click('button[type="submit"]');
+
+    await expect(page).toHaveURL(/dashboard/);
+    await expect(page.locator('.user-name')).toContainText('Test User');
+  });
+});
+```
+
+## Test Data Management
+
+### Fixtures
+```javascript
+// tests/fixtures/users.json
+{
+  "validUser": {
+    "email": "user@example.com",
+    "name": "Test User",
+    "role": "user"
+  },
+  "adminUser": {
+    "email": "admin@example.com",
+    "name": "Admin User",
+    "role": "admin"
+  }
+}
+```
+
+### Factory Functions
+```javascript
+// tests/helpers/factories.js
+let userIdCounter = 1;
+
+export function createUser(overrides = {}) {
+  return {
+    id: userIdCounter++,
+    email: `user${userIdCounter}@example.com`,
+    name: 'Test User',
+    createdAt: new Date(),
+    ...overrides
+  };
+}
+
+export function createUsers(count, overrides = {}) {
+  return Array.from({ length: count }, () => createUser(overrides));
+}
+```
+
+## Coverage Requirements
+
+### Minimum Coverage Targets
+- **Statements**: 80%
+- **Branches**: 75%
+- **Functions**: 80%
+- **Lines**: 80%
+
+### Critical Code Coverage
+- **100% coverage required** for:
+  - Authentication logic
+  - Payment processing
+  - Security-sensitive code
+  - Data validation
+
+### Running Coverage
+```bash
+# Generate coverage report
+pnpm test:coverage
+
+# View HTML report
+open coverage/index.html
+```
+
+## Test Best Practices
+
+### 1. Test Naming
+```javascript
+// Good - descriptive and specific
+it('should return 404 when user does not exist', () => {});
+it('should hash password with bcrypt before saving', () => {});
+
+// Avoid - vague or generic
+it('should work', () => {});
+it('test user creation', () => {});
+```
+
+### 2. Arrange-Act-Assert Pattern
+```javascript
+it('should calculate total price with tax', () => {
+  // Arrange
+  const items = [{ price: 10 }, { price: 20 }];
+  const taxRate = 0.1;
+
+  // Act
+  const total = calculateTotal(items, taxRate);
+
+  // Assert
+  expect(total).toBe(33); // (10 + 20) * 1.1
+});
+```
+
+### 3. Test Isolation
+```javascript
+// Each test should be independent
+describe('User Service', () => {
+  let userService;
+
+  beforeEach(() => {
+    // Fresh instance for each test
+    userService = new UserService();
+  });
+
+  it('test 1', () => {
+    // This test doesn't affect others
+  });
+
+  it('test 2', () => {
+    // Independent from test 1
+  });
+});
+```
+
+### 4. Avoid Test Interdependence
+```javascript
+// Bad - tests depend on execution order
+it('should create user', () => {
+  user = createUser();
+});
+
+it('should update user', () => {
+  updateUser(user); // Depends on previous test
+});
+
+// Good - each test stands alone
+it('should update user', () => {
+  const user = createUser();
+  updateUser(user);
+  // Test is self-contained
+});
+```
+
+### 5. Test Edge Cases
+```javascript
+describe('divide', () => {
+  it('should divide positive numbers', () => {
+    expect(divide(10, 2)).toBe(5);
+  });
+
+  it('should handle division by zero', () => {
+    expect(() => divide(10, 0)).toThrow('Division by zero');
+  });
+
+  it('should handle negative numbers', () => {
+    expect(divide(-10, 2)).toBe(-5);
+  });
+
+  it('should handle decimal results', () => {
+    expect(divide(10, 3)).toBeCloseTo(3.333, 2);
+  });
+});
+```
+
+## Continuous Integration
+
+### GitHub Actions
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test:coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+```
+
+---
+
+**Write comprehensive tests following these standards for reliable Node.js applications.**

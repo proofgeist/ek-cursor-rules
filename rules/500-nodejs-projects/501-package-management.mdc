@@ -1,0 +1,294 @@
+---
+description: Node.js package management with pnpm
+globs: ["package.json", "pnpm-lock.yaml", ".npmrc"]
+alwaysApply: true
+---
+
+# Node.js Package Management
+
+## Default Package Manager: pnpm
+
+**Always use `pnpm` as the default package manager for Node.js projects.**
+
+### Why pnpm?
+- **Disk efficient**: Uses content-addressable storage, saves disk space
+- **Fast**: Installs packages faster than npm/yarn
+- **Strict**: Better dependency management with isolated node_modules
+- **Monorepo support**: Excellent workspace support
+
+## Installation & Setup
+
+### Check if pnpm is installed
+```bash
+pnpm --version
+```
+
+### Install pnpm globally (if needed)
+```bash
+npm install -g pnpm
+# or
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+```
+
+### Initialize new project
+```bash
+pnpm init
+```
+
+## Package Management Commands
+
+### Installing Dependencies
+```bash
+# Install all dependencies
+pnpm install
+
+# Add a dependency
+pnpm add <package>
+
+# Add dev dependency
+pnpm add -D <package>
+
+# Add global package
+pnpm add -g <package>
+
+# Install specific version
+pnpm add <package>@<version>
+```
+
+### Removing Dependencies
+```bash
+# Remove a package
+pnpm remove <package>
+
+# Remove dev dependency
+pnpm remove -D <package>
+```
+
+### Updating Dependencies
+```bash
+# Update all dependencies
+pnpm update
+
+# Update specific package
+pnpm update <package>
+
+# Update to latest (including major)
+pnpm update <package> --latest
+
+# Interactive update
+pnpm update --interactive
+```
+
+### Running Scripts
+```bash
+# Run package.json script
+pnpm <script-name>
+
+# Examples:
+pnpm start
+pnpm dev
+pnpm test
+pnpm build
+```
+
+## Project Configuration
+
+### .npmrc Configuration
+Create `.npmrc` in project root for pnpm settings:
+
+```ini
+# Use pnpm for this project
+engine-strict=true
+
+# Hoist patterns (if needed for compatibility)
+shamefully-hoist=false
+
+# Auto install peers
+auto-install-peers=true
+
+# Strict peer dependencies
+strict-peer-dependencies=true
+```
+
+### package.json Engine Specification
+Add to `package.json` to enforce pnpm:
+
+```json
+{
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
+```
+
+### Add .npmrc to enforce pnpm
+```ini
+# .npmrc in project root
+engine-strict=true
+```
+
+## Workspace Management (Monorepos)
+
+### pnpm-workspace.yaml
+For monorepo projects, create `pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - '!**/test/**'
+```
+
+### Workspace Commands
+```bash
+# Install dependencies for all workspaces
+pnpm install
+
+# Run script in specific workspace
+pnpm --filter <workspace-name> <script>
+
+# Run script in all workspaces
+pnpm -r <script>
+
+# Add dependency to specific workspace
+pnpm --filter <workspace-name> add <package>
+```
+
+## Lock File Management
+
+### pnpm-lock.yaml
+- **Always commit** `pnpm-lock.yaml` to version control
+- Ensures reproducible installs across environments
+- Contains exact dependency tree
+
+### Lock File Operations
+```bash
+# Generate/update lock file
+pnpm install
+
+# Install from lock file only
+pnpm install --frozen-lockfile
+
+# Update lock file without installing
+pnpm install --lockfile-only
+```
+
+## Migration from npm/yarn
+
+### From npm
+```bash
+# Remove npm files
+rm package-lock.json
+rm -rf node_modules
+
+# Install with pnpm
+pnpm install
+
+# Import from package-lock.json (if needed)
+pnpm import
+```
+
+### From yarn
+```bash
+# Remove yarn files
+rm yarn.lock
+rm -rf node_modules
+
+# Install with pnpm
+pnpm install
+```
+
+## Best Practices
+
+### 1. Lock File First
+- Always run `pnpm install` before starting work
+- Keep `pnpm-lock.yaml` up to date
+- Use `--frozen-lockfile` in CI/CD
+
+### 2. Dependency Auditing
+```bash
+# Check for vulnerabilities
+pnpm audit
+
+# Fix vulnerabilities
+pnpm audit --fix
+```
+
+### 3. Clean Installation
+```bash
+# Remove node_modules and reinstall
+rm -rf node_modules
+pnpm install
+```
+
+### 4. List Dependencies
+```bash
+# List installed packages
+pnpm list
+
+# List outdated packages
+pnpm outdated
+
+# List dependency tree
+pnpm list --depth=<level>
+```
+
+### 5. Script Execution
+- Use `pnpm` instead of `npm run`
+- Example: `pnpm dev` instead of `npm run dev`
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: Package not found in pnpm store
+```bash
+# Clear pnpm store and reinstall
+pnpm store prune
+pnpm install
+```
+
+**Issue**: Peer dependency conflicts
+```bash
+# Install with legacy peer deps handling
+pnpm install --no-strict-peer-dependencies
+```
+
+**Issue**: Module resolution issues
+```bash
+# Use shamefully-hoist as last resort
+echo "shamefully-hoist=true" >> .npmrc
+pnpm install
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+```yaml
+- name: Setup pnpm
+  uses: pnpm/action-setup@v2
+  with:
+    version: 8
+
+- name: Setup Node.js
+  uses: actions/setup-node@v3
+  with:
+    node-version: 18
+    cache: 'pnpm'
+
+- name: Install dependencies
+  run: pnpm install --frozen-lockfile
+```
+
+### GitLab CI
+```yaml
+before_script:
+  - curl -fsSL https://get.pnpm.io/install.sh | sh -
+  - pnpm install --frozen-lockfile
+```
+
+---
+
+**Use pnpm for all Node.js package management unless explicitly directed otherwise.**

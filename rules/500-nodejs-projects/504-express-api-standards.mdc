@@ -1,0 +1,539 @@
+---
+description: Express.js API development standards
+globs: ["**/routes/**", "**/controllers/**", "**/middleware/**", "**/*server.js", "**/*app.js"]
+alwaysApply: true
+---
+
+# Express.js API Standards
+
+## Project Structure
+
+### Standard Express App Structure
+```
+src/
+├── app.js                 # Express app configuration
+├── server.js              # Server startup
+├── routes/                # Route definitions
+│   ├── index.js          # Route aggregator
+│   ├── users.js
+│   └── auth.js
+├── controllers/           # Request handlers
+│   ├── user-controller.js
+│   └── auth-controller.js
+├── middleware/            # Custom middleware
+│   ├── auth.js
+│   ├── error-handler.js
+│   └── validation.js
+├── services/              # Business logic
+│   ├── user-service.js
+│   └── email-service.js
+├── models/                # Data models
+│   └── user.js
+├── utils/                 # Utilities
+│   ├── logger.js
+│   └── response.js
+└── config/                # Configuration
+    └── index.js
+```
+
+## Application Setup
+
+### app.js - Express Configuration
+```javascript
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import compression from 'compression';
+import routes from './routes/index.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { requestLogger } from './middleware/logger.js';
+
+const app = express();
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  credentials: true
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Compression
+app.use(compression());
+
+// Logging
+app.use(requestLogger);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// API routes
+app.use('/api', routes);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Error handling (must be last)
+app.use(errorHandler);
+
+export default app;
+```
+
+### server.js - Server Startup
+```javascript
+import app from './app.js';
+import { logger } from './utils/logger.js';
+import { connectDatabase } from './config/database.js';
+
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+  try {
+    // Connect to database
+    await connectDatabase();
+    logger.info('Database connected');
+
+    // Start server
+    const server = app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV}`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        logger.info('Server closed');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
+```
+
+## Routing Standards
+
+### Route Organization
+```javascript
+// routes/index.js - Route aggregator
+import { Router } from 'express';
+import userRoutes from './users.js';
+import authRoutes from './auth.js';
+
+const router = Router();
+
+router.use('/users', userRoutes);
+router.use('/auth', authRoutes);
+
+export default router;
+```
+
+### Route Definition
+```javascript
+// routes/users.js
+import { Router } from 'express';
+import * as userController from '../controllers/user-controller.js';
+import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validation.js';
+import { userSchemas } from '../schemas/user.js';
+
+const router = Router();
+
+// Public routes
+router.post(
+  '/register',
+  validate(userSchemas.register),
+  userController.register
+);
+
+// Protected routes
+router.use(authenticate); // Apply auth to all routes below
+
+router.get('/', userController.getUsers);
+router.get('/:id', userController.getUserById);
+router.put(
+  '/:id',
+  validate(userSchemas.update),
+  userController.updateUser
+);
+router.delete('/:id', userController.deleteUser);
+
+export default router;
+```
+
+### RESTful Route Patterns
+```javascript
+// Resource-based routing
+GET    /api/users          # List users
+POST   /api/users          # Create user
+GET    /api/users/:id      # Get user
+PUT    /api/users/:id      # Update user
+PATCH  /api/users/:id      # Partial update
+DELETE /api/users/:id      # Delete user
+
+// Nested resources
+GET    /api/users/:id/posts           # Get user's posts
+POST   /api/users/:id/posts           # Create post for user
+GET    /api/users/:id/posts/:postId   # Get specific post
+
+// Actions (when REST doesn't fit)
+POST   /api/users/:id/activate        # Activate user
+POST   /api/users/:id/reset-password  # Reset password
+```
+
+## Controller Standards
+
+### Controller Structure
+```javascript
+// controllers/user-controller.js
+import * as userService from '../services/user-service.js';
+import { AppError } from '../utils/errors.js';
+import { successResponse } from '../utils/response.js';
+
+export async function getUsers(req, res, next) {
+  try {
+    const { page = 1, limit = 10, search } = req.query;
+
+    const result = await userService.getUsers({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search
+    });
+
+    res.json(successResponse(result));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getUserById(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = await userService.getUserById(id);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.json(successResponse(user));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createUser(req, res, next) {
+  try {
+    const user = await userService.createUser(req.body);
+    res.status(201).json(successResponse(user, 'User created successfully'));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = await userService.updateUser(id, req.body);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.json(successResponse(user, 'User updated successfully'));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    await userService.deleteUser(id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+## Middleware Standards
+
+### Authentication Middleware
+```javascript
+// middleware/auth.js
+import jwt from 'jsonwebtoken';
+import { AppError } from '../utils/errors.js';
+
+export async function authenticate(req, res, next) {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      next(new AppError('Invalid token', 401));
+    } else if (error.name === 'TokenExpiredError') {
+      next(new AppError('Token expired', 401));
+    } else {
+      next(error);
+    }
+  }
+}
+
+export function authorize(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(new AppError('Insufficient permissions', 403));
+    }
+    next();
+  };
+}
+```
+
+### Validation Middleware
+```javascript
+// middleware/validation.js
+import { AppError } from '../utils/errors.js';
+
+export function validate(schema) {
+  return async (req, res, next) => {
+    try {
+      const validated = await schema.validateAsync(req.body, {
+        abortEarly: false,
+        stripUnknown: true
+      });
+      req.body = validated;
+      next();
+    } catch (error) {
+      const errors = error.details.map(detail => ({
+        field: detail.path.join('.'),
+        message: detail.message
+      }));
+      next(new AppError('Validation failed', 400, { errors }));
+    }
+  };
+}
+```
+
+### Error Handler Middleware
+```javascript
+// middleware/error-handler.js
+import { logger } from '../utils/logger.js';
+
+export function errorHandler(err, req, res, next) {
+  // Log error
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    user: req.user?.id
+  });
+
+  // Operational errors (known errors)
+  if (err.isOperational) {
+    return res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message,
+      ...(err.data && { data: err.data })
+    });
+  }
+
+  // Programming errors (unknown errors)
+  // Don't leak error details in production
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : err.message;
+
+  res.status(500).json({
+    status: 'error',
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+}
+```
+
+### Request Logger Middleware
+```javascript
+// middleware/logger.js
+import { logger } from '../utils/logger.js';
+
+export function requestLogger(req, res, next) {
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info({
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+  });
+
+  next();
+}
+```
+
+## Response Standards
+
+### Standardized Response Format
+```javascript
+// utils/response.js
+export function successResponse(data, message = 'Success') {
+  return {
+    status: 'success',
+    message,
+    data
+  };
+}
+
+export function paginatedResponse(items, page, limit, total) {
+  return {
+    status: 'success',
+    data: items,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    }
+  };
+}
+```
+
+### Error Response Format
+```javascript
+// utils/errors.js
+export class AppError extends Error {
+  constructor(message, statusCode = 500, data = null) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+    this.data = data;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(errors) {
+    super('Validation failed', 400, { errors });
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(resource) {
+    super(`${resource} not found`, 404);
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Unauthorized') {
+    super(message, 401);
+  }
+}
+```
+
+## API Best Practices
+
+### 1. Versioning
+```javascript
+// Version in URL
+app.use('/api/v1', routesV1);
+app.use('/api/v2', routesV2);
+
+// Or version in headers
+app.use((req, res, next) => {
+  const version = req.get('API-Version') || '1';
+  req.apiVersion = version;
+  next();
+});
+```
+
+### 2. Rate Limiting
+```javascript
+import rateLimit from 'express-rate-limit';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please try again later'
+});
+
+app.use('/api/', apiLimiter);
+```
+
+### 3. Request Validation
+```javascript
+import Joi from 'joi';
+
+export const userSchemas = {
+  register: Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(8).required(),
+    name: Joi.string().min(2).max(100).required()
+  }),
+
+  update: Joi.object({
+    email: Joi.string().email(),
+    name: Joi.string().min(2).max(100)
+  }).min(1) // At least one field required
+};
+```
+
+### 4. CORS Configuration
+```javascript
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+```
+
+### 5. Async Handler Wrapper
+```javascript
+// utils/async-handler.js
+export const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// Usage
+router.get('/users', asyncHandler(async (req, res) => {
+  const users = await userService.getUsers();
+  res.json(successResponse(users));
+}));
+```
+
+---
+
+**Follow these Express.js standards for consistent, maintainable API development.**

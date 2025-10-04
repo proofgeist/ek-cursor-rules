@@ -52,59 +52,19 @@ Two import scripts are available:
 Core directives that apply to all projects:
 
 1. **`001-core-directive.mdc`** - Foundation principles and methodology
-   - Functional and modular design principles
-   - Approval-based workflow
-   - Project plan management
-   - Critical checkpoints
-
-2. **`002-pre-work-analysis.mdc`** - Before starting work
-   - Plan context review
-   - Request alignment checking
-   - Conflict detection and resolution
-
-3. **`003-during-work-tracking.mdc`** - Active work monitoring
-   - Progress tracking
-   - Decision documentation
-   - Discovery logging
-
-4. **`004-post-work-updates.mdc`** - After completing work
-   - Status updates
-   - Plan synchronization
-   - Completion tracking
-
-5. **`005-plan-format-standards.mdc`** - Project plan structure
-   - Required plan format and sections
-   - User persona requirements
-   - Milestone tracking standards
-
-6. **`006-conflict-resolution.mdc`** - Handling conflicts
-   - Conflict detection
-   - Resolution protocols
-   - Communication guidelines
-
-7. **`007-integration-workflow.mdc`** - Development integration
-   - Code workflow integration
-   - Documentation synchronization
-   - Testing and CI/CD alignment
-
-8. **`008-documentation-style.mdc`** - Documentation writing standards
-   - Clear, concise writing guidelines
-   - Technical documentation best practices
-
-9. **`009-documentation-structure.mdc`** - Documentation organization
-   - `/docs` folder structure requirements
-   - Central documentation home
-   - Linking and cross-reference standards
-
-10. **`010-documentation-writing-standards.mdc`** - Content quality standards
-    - Writing style and structure guidelines
-    - Code example standards
-    - Review and maintenance processes
+2. **`002-pre-work-analysis.mdc`** - Pre-work analysis and alignment
+3. **`003-during-work-tracking.mdc`** - Active work progress tracking
+4. **`004-post-work-updates.mdc`** - Post-work updates and plan sync
+5. **`005-plan-format-standards.mdc`** - Project plan structure standards
+6. **`006-conflict-resolution.mdc`** - Conflict detection and resolution
+7. **`007-integration-workflow.mdc`** - Development integration workflow
+8. **`008-documentation-standards.mdc`** - Comprehensive documentation standards (consolidated)
+9. **`011-security-standards.mdc`** - Security best practices and standards
 
 ### Git Rules (`/rules/100-git-rules/`)
 Version control and collaboration standards:
 
-- **`101-using-git.mdc`** - Git usage guidelines and best practices
+- **`101-git-standards.mdc`** - Comprehensive Git workflow, commits, branching, PRs, and code review
 
 ### Design Rules (`/rules/200-design-rules/`)
 Design thinking and user experience standards:
@@ -117,7 +77,30 @@ Specialized directives for Python development:
 - **`301-virtual-environment-setup.mdc`** - Python environment management using `uv`
 - **`302-python-code-standards.mdc`** - Python coding standards
 - **`303-python-testing-standards.mdc`** - Python testing practices
-- **`304-test-scripts-and-utilities.mdc`** - Test scripts and utility file organization
+- **`304-test-organization.mdc`** - Test file organization and structure
+- **`305-test-utilities.mdc`** - Test utilities and helper functions
+
+### Versioning Rules (`/rules/400-versioning-rules/`)
+Automated versioning and release management:
+
+- **`401-versioning-standards.mdc`** - Semantic versioning with semantic-release (REQUIRED)
+
+### Node.js Projects (`/rules/500-nodejs-projects/`)
+Specialized directives for Node.js development:
+
+- **`501-package-management.mdc`** - Package management with pnpm (default)
+- **`502-nodejs-code-standards.mdc`** - Node.js coding standards and best practices
+- **`503-nodejs-testing-standards.mdc`** - Node.js testing with Vitest
+- **`504-express-api-standards.mdc`** - Express.js API development standards
+- **`505-nextjs-vercel-standards.mdc`** - Next.js framework and Vercel deployment
+- **`506-better-auth-standards.mdc`** - Better-Auth authentication implementation
+- **`507-proofkit-standards.mdc`** - ProofKit boilerplate for FileMaker web applications
+- **`508-typescript-standards.mdc`** - TypeScript coding standards and best practices
+
+### Database Rules (`/rules/600-database-rules/`)
+Database design and management standards:
+
+- **`601-database-standards.mdc`** - PostgreSQL as default, schema design, Prisma, migrations, optimization
 
 ## Core Principles
 
@@ -186,13 +169,35 @@ Plan Check → Conflict Resolution → Progress Track → Plan Update
 - Comprehensive linking and cross-referencing
 - Writing standards for clarity and consistency
 
-## Language-Specific Features
+## Technology Stack Standards
 
 ### Python Projects
-- **Package Management**: Uses `uv` as default for Python projects
+- **Package Management**: `uv` as default
 - **Virtual Environment**: Automated setup and management
-- **Test Organization**: Clear distinction between runnable tests, test scripts, and utilities
-- **Best Practices**: Following Python-specific conventions
+- **Test Organization**: Structured test files, scripts, and utilities
+- **Best Practices**: Modern Python conventions
+
+### Node.js/TypeScript Projects
+- **Package Management**: `pnpm` as default
+- **Testing Framework**: Vitest (Jest alternative)
+- **API Framework**: Express.js with best practices
+- **Web Framework**: Next.js with App Router and Server Components
+- **Deployment**: Vercel as default platform
+- **Authentication**: Better-Auth for type-safe auth
+- **FileMaker Integration**: ProofKit for FileMaker web apps
+- **Type Safety**: Comprehensive TypeScript standards
+
+### Database
+- **Default**: PostgreSQL
+- **ORM**: Prisma (Node.js) or SQLAlchemy (Python)
+- **Migrations**: Automated with version control
+- **Security**: Parameterized queries, encryption, access control
+
+### Versioning & Releases
+- **Version Management**: semantic-release (REQUIRED)
+- **Commit Format**: Conventional Commits (enforced)
+- **Automation**: GitHub Actions for CI/CD
+- **Changelog**: Auto-generated from commits
 
 ## Benefits
 

@@ -1,0 +1,500 @@
+---
+description: ProofKit boilerplate and tooling standards for FileMaker web applications
+globs: ["**/proofkit.config.*", "**/fmdapi/**", "**/*.fmschema.ts"]
+alwaysApply: true
+---
+
+# ProofKit Development Standards
+
+## What is ProofKit?
+
+**ProofKit is a comprehensive TypeScript toolset and CLI for building modern web applications integrated with Claris FileMaker.**
+
+### Core Purpose
+- Boilerplate and project scaffolding for FileMaker web apps
+- Type-safe FileMaker Data API integration
+- Authentication backed by FileMaker database
+- Code generation from FileMaker layouts
+- WebViewer integration utilities
+
+### Why ProofKit?
+- Rapid development of FileMaker-connected web apps
+- Type safety with auto-generated TypeScript types
+- Modern web stack (Next.js, Better-Auth, TypeScript)
+- Opinionated structure with flexibility
+- Progressive enhancement via CLI code mods
+
+## Core Libraries
+
+### @proofkit/fmdapi
+**FileMaker Data API integration with type safety**
+
+```typescript
+import { fmdapi } from '@proofkit/fmdapi';
+
+// Type-safe API calls to FileMaker
+const users = await fmdapi.layouts.Users.find({
+  query: [{ email: 'user@example.com' }]
+});
+
+// Automatic token management
+// Runtime validation of responses
+// TypeScript types from FileMaker layouts
+```
+
+### @proofkit/typegen
+**Automatic TypeScript generation from FileMaker layouts**
+
+```bash
+# Generate types from FileMaker schema
+pnpm proofkit typegen
+
+# Creates TypeScript types and Zod validators
+# Based on your FileMaker layout definitions
+```
+
+Generated files:
+```typescript
+// src/fmdapi/schemas/Users.fmschema.ts
+import { z } from 'zod';
+
+export const UsersSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  createdAt: z.string().datetime(),
+});
+
+export type Users = z.infer<typeof UsersSchema>;
+```
+
+### @proofkit/webviewer
+**FileMaker WebViewer integration**
+
+```typescript
+import { executeScript } from '@proofkit/webviewer';
+
+// Execute FileMaker script from web code
+const result = await executeScript('GetUserData', { userId: '123' });
+
+// Async functions in WebViewer
+// Get results from FileMaker scripts
+// Bidirectional communication
+```
+
+### @proofkit/better-auth
+**Self-hosted authentication with FileMaker backend**
+
+```typescript
+import { betterAuth } from '@proofkit/better-auth';
+import { fmAdapter } from '@proofkit/better-auth/adapters';
+
+export const auth = betterAuth({
+  database: fmAdapter({
+    // Uses FileMaker as auth database
+    layout: 'Users',
+    // Automatic user management
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
+});
+```
+
+## Project Setup
+
+### Initialize ProofKit Project
+
+```bash
+# Create new ProofKit project
+pnpm create proofkit@latest my-app
+
+# Or with specific template
+pnpm create proofkit@latest my-app --template filemaker-auth
+
+# Navigate and install
+cd my-app
+pnpm install
+```
+
+### Project Structure
+
+```
+my-proofkit-app/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── (auth)/            # Auth routes
+│   │   ├── dashboard/         # Protected routes
+│   │   └── api/               # API routes
+│   ├── components/            # React components
+│   ├── lib/                   # Utilities
+│   │   ├── auth.ts           # Better-Auth config
+│   │   └── fmdapi.ts         # FileMaker API config
+│   ├── fmdapi/               # Generated FileMaker types
+│   │   └── schemas/          # Auto-generated schemas
+│   └── middleware.ts          # Auth middleware
+├── proofkit.config.ts         # ProofKit configuration
+├── .env.local                 # Environment variables
+└── package.json
+```
+
+## Configuration
+
+### proofkit.config.ts
+
+```typescript
+import { defineConfig } from '@proofkit/cli';
+
+export default defineConfig({
+  // FileMaker connection
+  filemaker: {
+    host: process.env.FM_HOST,
+    database: process.env.FM_DATABASE,
+    layouts: {
+      users: 'Users',
+      posts: 'Posts',
+      comments: 'Comments',
+    },
+  },
+
+  // Type generation
+  typegen: {
+    outputDir: './src/fmdapi/schemas',
+    generateZod: true,
+    generateTypes: true,
+  },
+
+  // Better-Auth integration
+  auth: {
+    adapter: 'filemaker',
+    userLayout: 'Users',
+  },
+});
+```
+
+### Environment Variables
+
+```bash
+# .env.local
+
+# FileMaker
+FM_HOST="https://your-filemaker-server.com"
+FM_DATABASE="YourDatabase"
+FM_USERNAME="api_user"
+FM_PASSWORD="api_password"
+
+# Better Auth
+BETTER_AUTH_SECRET="your-secret-key-min-32-chars"
+BETTER_AUTH_URL="http://localhost:3000"
+
+# App
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+## FileMaker Integration Patterns
+
+### Data Fetching
+
+```typescript
+// lib/fmdapi.ts - Configure FileMaker API
+import { createFMClient } from '@proofkit/fmdapi';
+
+export const fm = createFMClient({
+  host: process.env.FM_HOST!,
+  database: process.env.FM_DATABASE!,
+  auth: {
+    username: process.env.FM_USERNAME!,
+    password: process.env.FM_PASSWORD!,
+  },
+});
+
+// app/api/users/route.ts - API route
+import { fm } from '@/lib/fmdapi';
+import { UsersSchema } from '@/fmdapi/schemas/Users.fmschema';
+
+export async function GET() {
+  const response = await fm.layouts.Users.find({
+    query: [{ active: '1' }],
+    sort: [{ fieldName: 'createdAt', sortOrder: 'descend' }],
+  });
+
+  // Automatic validation with generated schema
+  const users = response.data.map(record =>
+    UsersSchema.parse(record.fieldData)
+  );
+
+  return Response.json({ users });
+}
+
+// app/dashboard/page.tsx - Server Component
+import { fm } from '@/lib/fmdapi';
+
+export default async function DashboardPage() {
+  const users = await fm.layouts.Users.find({});
+
+  return (
+    <div>
+      <h1>Users</h1>
+      {users.data.map(user => (
+        <div key={user.recordId}>{user.fieldData.name}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Creating Records
+
+```typescript
+import { fm } from '@/lib/fmdapi';
+
+async function createUser(data: { email: string; name: string }) {
+  const response = await fm.layouts.Users.create({
+    fieldData: {
+      email: data.email,
+      name: data.name,
+      createdAt: new Date().toISOString(),
+    },
+  });
+
+  return response.data;
+}
+```
+
+### Updating Records
+
+```typescript
+async function updateUser(recordId: string, data: Partial<Users>) {
+  const response = await fm.layouts.Users.update(recordId, {
+    fieldData: data,
+  });
+
+  return response.data;
+}
+```
+
+### Deleting Records
+
+```typescript
+async function deleteUser(recordId: string) {
+  await fm.layouts.Users.delete(recordId);
+}
+```
+
+## Authentication with Better-Auth + FileMaker
+
+### Auth Configuration
+
+```typescript
+// lib/auth.ts
+import { betterAuth } from 'better-auth';
+import { fmAdapter } from '@proofkit/better-auth/adapters';
+
+export const auth = betterAuth({
+  database: fmAdapter({
+    host: process.env.FM_HOST!,
+    database: process.env.FM_DATABASE!,
+    layout: 'Users',
+    auth: {
+      username: process.env.FM_USERNAME!,
+      password: process.env.FM_PASSWORD!,
+    },
+  }),
+
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
+
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+  },
+});
+```
+
+### Auth API Route
+
+```typescript
+// app/api/auth/[...all]/route.ts
+import { auth } from '@/lib/auth';
+import { toNextJsHandler } from 'better-auth/next-js';
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+### Protected Routes
+
+```typescript
+// middleware.ts
+import { auth } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
+
+  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*'],
+};
+```
+
+## WebViewer Integration
+
+### Execute FileMaker Scripts from Web
+
+```typescript
+import { executeScript } from '@proofkit/webviewer';
+
+async function handleAction() {
+  // Call FileMaker script and get result
+  const result = await executeScript('ProcessPayment', {
+    amount: 100,
+    userId: '123',
+  });
+
+  console.log(result); // Result from FileMaker script
+}
+```
+
+### Web Code in FileMaker WebViewer
+
+```html
+<!-- In FileMaker WebViewer -->
+<script type="module">
+  import { executeScript } from '@proofkit/webviewer';
+
+  // This runs in FileMaker WebViewer
+  async function getData() {
+    const data = await executeScript('GetUserData');
+    document.getElementById('result').textContent = JSON.stringify(data);
+  }
+
+  getData();
+</script>
+```
+
+## CLI Code Mods
+
+### Add Features to Existing Project
+
+```bash
+# Add authentication
+pnpm proofkit add auth
+
+# Add FileMaker layout integration
+pnpm proofkit add layout Posts
+
+# Add API route
+pnpm proofkit add route users
+
+# List available mods
+pnpm proofkit add --list
+```
+
+### Generate Types from FileMaker
+
+```bash
+# Connect to FileMaker and generate types
+pnpm proofkit typegen
+
+# Watch mode for development
+pnpm proofkit typegen --watch
+
+# Generate for specific layouts
+pnpm proofkit typegen --layouts Users,Posts
+```
+
+## Best Practices
+
+### Type Safety
+- Always run `proofkit typegen` after FileMaker schema changes
+- Use generated Zod schemas for validation
+- Leverage TypeScript types from generated schemas
+- Never manually write FileMaker record types
+
+### Error Handling
+```typescript
+import { FMError } from '@proofkit/fmdapi';
+
+try {
+  const user = await fm.layouts.Users.find({ query: [{ id: '123' }] });
+} catch (error) {
+  if (error instanceof FMError) {
+    console.error('FileMaker error:', error.code, error.message);
+  } else {
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+### Authentication
+- Use FileMaker as the source of truth for user data
+- Leverage Better-Auth's built-in security features
+- Implement proper session management
+- Use middleware for route protection
+
+### Performance
+- Cache FileMaker API responses when appropriate
+- Use Next.js Server Components for data fetching
+- Implement proper loading states
+- Consider using Supabase for real-time features alongside FileMaker
+
+## Supabase Integration (Optional)
+
+ProofKit projects can combine FileMaker and Supabase:
+
+```typescript
+// Use FileMaker for primary data
+const users = await fm.layouts.Users.find({});
+
+// Use Supabase for real-time features
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Real-time notifications
+const { data } = await supabase
+  .from('notifications')
+  .select('*')
+  .eq('user_id', userId)
+  .order('created_at', { ascending: false });
+```
+
+## Development Workflow
+
+### Initial Setup
+1. Create ProofKit project: `pnpm create proofkit@latest`
+2. Configure FileMaker connection in `.env.local`
+3. Run `proofkit typegen` to generate types
+4. Set up Better-Auth with FileMaker adapter
+5. Start development: `pnpm dev`
+
+### Adding Features
+1. Define layout in FileMaker
+2. Run `proofkit typegen` to generate types
+3. Use `proofkit add` to scaffold code
+4. Implement business logic
+5. Test integration with FileMaker
+
+### Deployment
+1. Build Next.js app: `pnpm build`
+2. Deploy to Vercel (recommended)
+3. Configure environment variables
+4. Ensure FileMaker server is accessible
+5. Test production deployment
+
+---
+
+**Use ProofKit for rapid development of type-safe FileMaker web applications with modern web technologies.**

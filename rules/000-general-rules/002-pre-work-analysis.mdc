@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
----
----
-description: What to do before starting work in a project
-globs: 
+description: Pre-work analysis and alignment protocol
+globs: []
 alwaysApply: true
 ---
 

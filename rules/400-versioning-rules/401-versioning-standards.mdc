@@ -1,0 +1,413 @@
+---
+description: Semantic versioning and automated release standards
+globs: ["**/package.json", "**/pyproject.toml", "**/.releaserc*", "**/.semantic-release/*"]
+alwaysApply: true
+---
+
+# Versioning & Release Standards
+
+## Core Directive
+
+**Every project MUST use semantic-release for automated versioning and releases.**
+
+### Why semantic-release?
+- Automated version management based on conventional commits
+- Automatic changelog generation
+- Consistent release process across projects
+- CI/CD integration
+- Reduces human error in versioning
+
+## Semantic Versioning (SemVer)
+
+### Version Format
+All projects use semantic versioning: `MAJOR.MINOR.PATCH`
+
+- **MAJOR**: Breaking changes (not backward compatible)
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes (backward compatible)
+
+### Version Numbering Rules
+```
+- Start with 0.1.0 for initial development
+- Bug fix:        1.0.0 → 1.0.1 (PATCH)
+- New feature:    1.0.1 → 1.1.0 (MINOR)
+- Breaking change: 1.1.0 → 2.0.0 (MAJOR)
+```
+
+### Pre-release Labels
+```
+1.0.0-alpha.1    # Alpha releases
+1.0.0-beta.1     # Beta releases
+1.0.0-rc.1       # Release candidates
+```
+
+## semantic-release Setup (REQUIRED)
+
+### Installation
+
+```bash
+# Install semantic-release and plugins
+pnpm add -D semantic-release \
+  @semantic-release/commit-analyzer \
+  @semantic-release/release-notes-generator \
+  @semantic-release/changelog \
+  @semantic-release/github \
+  @semantic-release/git \
+  @semantic-release/npm
+```
+
+### Configuration
+
+Create `.releaserc.json` in project root:
+
+```json
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    "@semantic-release/npm",
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "package.json"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}
+```
+
+### package.json Scripts
+
+```json
+{
+  "scripts": {
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run"
+  }
+}
+```
+
+## Conventional Commits (REQUIRED)
+
+### Commit Message Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Commit Types & Version Impact
+
+```
+feat:     → MINOR version (new features)
+fix:      → PATCH version (bug fixes)
+docs:     → PATCH version (documentation)
+style:    → PATCH version (formatting)
+refactor: → PATCH version (code refactoring)
+perf:     → PATCH version (performance)
+test:     → PATCH version (tests)
+chore:    → PATCH version (maintenance)
+ci:       → PATCH version (CI config)
+build:    → PATCH version (build system)
+
+BREAKING CHANGE: → MAJOR version
+```
+
+### Examples
+
+```bash
+# Minor release (new feature)
+feat(auth): add password reset functionality
+
+# Patch release (bug fix)
+fix(api): resolve race condition in user creation
+
+Added database constraint to prevent duplicate user creation
+when multiple requests arrive simultaneously.
+
+Fixes #234
+
+# Major release (breaking change)
+feat(api): change authentication to use OAuth 2.0
+
+BREAKING CHANGE: Previous API key authentication is no longer
+supported. All clients must migrate to OAuth 2.0.
+
+See migration guide: docs/oauth-migration.md
+
+# Patch release (docs)
+docs(readme): update installation instructions
+```
+
+## GitHub Actions Integration
+
+### Release Workflow
+
+Create `.github/workflows/release.yml`:
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm release
+```
+
+### Environment Variables
+
+**GitHub:**
+- `GITHUB_TOKEN`: Automatically provided by GitHub Actions
+- Use repository secrets for additional tokens
+
+**NPM (if publishing):**
+- `NPM_TOKEN`: Create at npmjs.com → Access Tokens
+- Add as repository secret
+
+## Release Process
+
+### Automated Releases
+
+1. **Developer creates feature**
+   - Work on feature branch
+   - Use conventional commits
+   - Create pull request
+
+2. **Code review & merge**
+   - Review and approve PR
+   - Squash and merge to main
+   - Ensure commit message follows conventions
+
+3. **Automatic release**
+   - GitHub Actions runs on main push
+   - semantic-release analyzes commits
+   - Determines version bump
+   - Updates CHANGELOG.md
+   - Creates Git tag
+   - Creates GitHub release
+   - Publishes to NPM (if configured)
+
+### Manual Release (Emergency)
+
+```bash
+# Dry run to preview release
+pnpm release:dry
+
+# Force release (use with caution)
+npx semantic-release --no-ci
+```
+
+## Branch Strategy
+
+### Main Branch
+- **Protected**: Require PR and reviews
+- **CI Required**: All checks must pass
+- **Release Trigger**: Every push triggers release analysis
+
+### Feature Branches
+- Branch from: `main`
+- Naming: `feat/feature-name`, `fix/bug-name`
+- Merge: Squash and merge to main
+- Delete after merge
+
+### Hotfix Process
+```bash
+# Create hotfix branch from main
+git checkout -b fix/critical-bug main
+
+# Fix the issue
+git commit -m "fix(critical): resolve security vulnerability"
+
+# Create PR, get approval, merge to main
+# semantic-release will handle the patch version
+```
+
+## Changelog Management
+
+### Automatic Generation
+semantic-release generates CHANGELOG.md from commits:
+
+```markdown
+# Changelog
+
+## [2.1.0](https://github.com/user/repo/compare/v2.0.0...v2.1.0) (2024-01-15)
+
+### Features
+
+* **auth**: add password reset functionality ([abc123](https://github.com/user/repo/commit/abc123))
+
+### Bug Fixes
+
+* **api**: resolve race condition in user creation ([def456](https://github.com/user/repo/commit/def456))
+```
+
+### Manual Entries (Discouraged)
+If necessary, add to CHANGELOG.md before version section:
+```markdown
+<!-- Manual entries go here, above automatic content -->
+```
+
+## Commit Message Enforcement
+
+### Git Hooks (Recommended)
+
+Install commitlint:
+```bash
+pnpm add -D @commitlint/config-conventional @commitlint/cli husky
+```
+
+Configure `.commitlintrc.json`:
+```json
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "type-enum": [2, "always", [
+      "feat", "fix", "docs", "style", "refactor",
+      "perf", "test", "build", "ci", "chore", "revert"
+    ]],
+    "subject-case": [2, "never", ["upper-case"]],
+    "subject-empty": [2, "never"],
+    "subject-full-stop": [2, "never", "."],
+    "header-max-length": [2, "always", 72]
+  }
+}
+```
+
+Setup husky:
+```bash
+npx husky-init
+echo "npx --no -- commitlint --edit \$1" > .husky/commit-msg
+```
+
+### PR Title Validation
+
+GitHub Action to validate PR titles (`.github/workflows/pr-title.yml`):
+
+```yaml
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Best Practices
+
+### Commit Discipline
+- Write clear, descriptive commit messages
+- One logical change per commit
+- Use scope to indicate affected area
+- Document breaking changes explicitly
+- Reference issues in footer
+
+### Version Strategy
+- Let semantic-release handle all versioning
+- Never manually edit version in package.json
+- Use conventional commits consistently
+- Review dry-run before important releases
+
+### Release Management
+- Monitor releases in GitHub Actions
+- Review generated changelogs
+- Test releases in staging before production
+- Keep dependencies updated
+
+### Troubleshooting
+```bash
+# Debug release process
+pnpm release:dry --debug
+
+# Check what would be released
+npx semantic-release --dry-run
+
+# Analyze commits
+npx semantic-release-cli --analyze-commits
+```
+
+## Migration Guide
+
+### Existing Projects
+
+1. **Install semantic-release**
+   ```bash
+   pnpm add -D semantic-release @semantic-release/changelog @semantic-release/git
+   ```
+
+2. **Create .releaserc.json** with configuration above
+
+3. **Update GitHub Actions** to use release workflow
+
+4. **Tag current version**
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+5. **Enforce conventional commits** with commitlint
+
+6. **Merge with conventional commit** to trigger first automated release
+
+---
+
+**Use semantic-release for all projects to ensure consistent, automated versioning and releases.**

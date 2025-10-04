@@ -1,0 +1,689 @@
+---
+description: Database design, schema management, and migration standards
+globs: ["**/prisma/**", "**/migrations/**", "**/drizzle/**", "**/*.sql"]
+alwaysApply: true
+---
+
+# Database Standards
+
+## Database Selection
+
+### Recommended Databases
+
+**Relational (SQL):**
+- **PostgreSQL** - Recommended for most applications
+- **MySQL/MariaDB** - Alternative for specific use cases
+- **SQLite** - Development and small applications
+
+**NoSQL:**
+- **MongoDB** - Document storage
+- **Redis** - Caching and sessions
+- **DynamoDB** - AWS serverless applications
+
+### PostgreSQL as Default
+
+**Use PostgreSQL as the default database unless there's a specific reason not to.**
+
+**Why PostgreSQL:**
+- ACID compliance and reliability
+- Rich data types (JSON, arrays, ranges)
+- Excellent performance
+- Strong community and ecosystem
+- Advanced features (full-text search, geospatial)
+- Great tooling and ORM support
+
+## Schema Design Principles
+
+### Naming Conventions
+
+**Tables:**
+- Use plural nouns: `users`, `posts`, `comments`
+- Use snake_case: `user_profiles`, `blog_posts`
+- Avoid abbreviations unless widely understood
+- Use descriptive names
+
+**Columns:**
+- Use snake_case: `first_name`, `created_at`, `is_active`
+- Be specific: `email_address` not just `email`
+- Use consistent naming patterns
+- Avoid reserved keywords
+
+**Indexes:**
+- Prefix with `idx_`: `idx_users_email`, `idx_posts_created_at`
+- Include table and column names
+- Use descriptive names for composite indexes
+
+**Constraints:**
+- Primary keys: `pk_<table>`
+- Foreign keys: `fk_<table>_<referenced_table>`
+- Unique constraints: `uq_<table>_<column>`
+- Check constraints: `ck_<table>_<constraint_name>`
+
+### Table Design
+
+**Primary Keys:**
+```sql
+-- Use UUIDs for distributed systems
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Use auto-increment for single-server apps
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  title VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**Timestamps:**
+```sql
+-- Always include created_at and updated_at
+CREATE TABLE articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+-- Use trigger for auto-updating updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_articles_updated_at
+BEFORE UPDATE ON articles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+```
+
+**Soft Deletes:**
+```sql
+-- Include deleted_at for soft deletes
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create partial index for active records only
+CREATE INDEX idx_users_active ON users(id) WHERE deleted_at IS NULL;
+```
+
+### Data Types
+
+**Choose Appropriate Types:**
+
+```sql
+-- Text/Strings
+email VARCHAR(255)          -- Limited length
+bio TEXT                    -- Unlimited length
+status VARCHAR(20)          -- Use ENUM or check constraint instead
+
+-- Numbers
+age INTEGER                 -- Whole numbers
+price DECIMAL(10, 2)       -- Money (avoid FLOAT)
+rating DECIMAL(3, 2)       -- Ratings (e.g., 4.5)
+quantity BIGINT            -- Large numbers
+
+-- Dates/Times
+created_at TIMESTAMP WITH TIME ZONE  -- Preferred
+birth_date DATE                      -- Date only
+event_time TIME WITH TIME ZONE       -- Time only
+
+-- Boolean
+is_active BOOLEAN DEFAULT true
+is_verified BOOLEAN DEFAULT false
+
+-- JSON
+metadata JSONB             -- Use JSONB not JSON
+settings JSONB            -- Indexable, faster
+
+-- Arrays
+tags TEXT[]               -- PostgreSQL arrays
+phone_numbers VARCHAR(20)[]
+```
+
+### Relationships
+
+**One-to-Many:**
+```sql
+-- Users have many posts
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+```
+
+**Many-to-Many:**
+```sql
+-- Posts have many tags, tags have many posts
+CREATE TABLE posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL
+);
+
+CREATE TABLE tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE post_tags (
+  post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+  tag_id UUID REFERENCES tags(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (post_id, tag_id)
+);
+
+CREATE INDEX idx_post_tags_post_id ON post_tags(post_id);
+CREATE INDEX idx_post_tags_tag_id ON post_tags(tag_id);
+```
+
+**One-to-One:**
+```sql
+-- User has one profile
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE user_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  bio TEXT,
+  avatar_url TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+## Indexing Strategy
+
+### When to Add Indexes
+
+**Always Index:**
+- Primary keys (automatic)
+- Foreign keys
+- Columns used in WHERE clauses frequently
+- Columns used in JOIN conditions
+- Columns used in ORDER BY frequently
+- Unique constraints
+
+**Consider Indexing:**
+- Columns used in GROUP BY
+- Columns with high cardinality
+- Columns in composite searches
+- JSONB fields with GIN indexes
+
+**Avoid Indexing:**
+- Small tables (< 1000 rows)
+- Columns with low cardinality (e.g., boolean)
+- Columns rarely queried
+- Wide columns (TEXT, BLOB)
+
+### Index Types
+
+```sql
+-- B-tree index (default, most common)
+CREATE INDEX idx_users_email ON users(email);
+
+-- Partial index (filtered)
+CREATE INDEX idx_users_active_email ON users(email)
+WHERE deleted_at IS NULL;
+
+-- Composite index (order matters!)
+CREATE INDEX idx_posts_user_created ON posts(user_id, created_at DESC);
+
+-- GIN index (for JSONB, arrays, full-text search)
+CREATE INDEX idx_products_metadata ON products USING GIN(metadata);
+CREATE INDEX idx_posts_tags ON posts USING GIN(tags);
+
+-- Full-text search
+CREATE INDEX idx_articles_search ON articles
+USING GIN(to_tsvector('english', title || ' ' || content));
+
+-- Unique index
+CREATE UNIQUE INDEX idx_users_email_unique ON users(LOWER(email));
+```
+
+### Index Monitoring
+
+```sql
+-- Find unused indexes
+SELECT
+  schemaname,
+  tablename,
+  indexname,
+  idx_scan as index_scans
+FROM pg_stat_user_indexes
+WHERE idx_scan = 0
+AND indexrelname NOT LIKE 'pk_%'
+ORDER BY pg_relation_size(indexrelid) DESC;
+
+-- Find missing indexes
+SELECT
+  schemaname,
+  tablename,
+  attname,
+  n_distinct,
+  correlation
+FROM pg_stats
+WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY n_distinct DESC;
+```
+
+## ORM Standards
+
+### Recommended ORMs
+
+**Node.js/TypeScript:**
+- **Prisma** - Recommended (type-safe, great DX)
+- **Drizzle** - Alternative (lightweight, SQL-like)
+- **TypeORM** - Full-featured ORM
+
+**Python:**
+- **SQLAlchemy** - Recommended (powerful, mature)
+- **Django ORM** - For Django projects
+- **Tortoise ORM** - Async ORM
+
+### Prisma Standards (Node.js)
+
+**Schema Organization:**
+```prisma
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp"), pg_trgm]
+}
+
+// User model
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique @db.VarChar(255)
+  name      String?  @db.VarChar(100)
+  role      Role     @default(USER)
+  posts     Post[]
+  profile   Profile?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// One-to-one relationship
+model Profile {
+  userId    String   @id @map("user_id") @db.Uuid
+  bio       String?  @db.Text
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("user_profiles")
+}
+
+// One-to-many relationship
+model Post {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @db.VarChar(255)
+  content   String?  @db.Text
+  published Boolean  @default(false)
+  authorId  String   @map("author_id") @db.Uuid
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags      Tag[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([authorId])
+  @@index([published, createdAt])
+  @@map("posts")
+}
+
+// Many-to-many relationship
+model Tag {
+  id    String @id @default(uuid()) @db.Uuid
+  name  String @unique @db.VarChar(50)
+  posts Post[]
+
+  @@map("tags")
+}
+
+// Enums
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+```
+
+**Prisma Client Usage:**
+```typescript
+// Good practices
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development'
+    ? ['query', 'error', 'warn']
+    : ['error'],
+});
+
+// Use transactions for related operations
+async function createUserWithProfile(data) {
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: data.email,
+        name: data.name,
+      },
+    });
+
+    const profile = await tx.profile.create({
+      data: {
+        userId: user.id,
+        bio: data.bio,
+      },
+    });
+
+    return { user, profile };
+  });
+}
+
+// Use select to fetch only needed fields
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    email: true,
+    name: true,
+    _count: {
+      select: { posts: true }
+    }
+  },
+  where: {
+    deletedAt: null
+  }
+});
+
+// Use cursor-based pagination for large datasets
+async function getPaginatedPosts(cursor?: string, limit = 20) {
+  return await prisma.post.findMany({
+    take: limit,
+    skip: cursor ? 1 : 0,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: { createdAt: 'desc' },
+  });
+}
+```
+
+## Migrations
+
+### Migration Standards
+
+**Rules:**
+1. **Never edit existing migrations** - Create new ones
+2. **Always review generated migrations** - Verify SQL
+3. **Test migrations on staging** before production
+4. **Keep migrations reversible** when possible
+5. **One logical change per migration**
+6. **Name migrations descriptively**
+
+**Prisma Migrations:**
+```bash
+# Create migration
+pnpm prisma migrate dev --name add_user_role
+
+# Apply migrations (production)
+pnpm prisma migrate deploy
+
+# Reset database (dev only!)
+pnpm prisma migrate reset
+
+# Generate migration without applying
+pnpm prisma migrate dev --create-only
+```
+
+**Migration Naming:**
+```
+Good:
+- 20240101120000_add_user_role_column
+- 20240102130000_create_posts_table
+- 20240103140000_add_posts_user_id_index
+
+Bad:
+- migration_1
+- update
+- fixes
+```
+
+### Data Migrations
+
+**Separate schema and data migrations:**
+
+```sql
+-- Schema migration (via Prisma)
+ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';
+
+-- Data migration (separate script)
+-- scripts/migrations/backfill_user_roles.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function backfillUserRoles() {
+  // Get admin emails from config
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+
+  // Update in batches
+  await prisma.user.updateMany({
+    where: {
+      email: {
+        in: adminEmails
+      }
+    },
+    data: {
+      role: 'ADMIN'
+    }
+  });
+
+  console.log(`Updated ${adminEmails.length} users to ADMIN role`);
+}
+
+backfillUserRoles()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+## Query Optimization
+
+### Query Best Practices
+
+**Avoid N+1 Queries:**
+```typescript
+// Bad - N+1 query problem
+const users = await prisma.user.findMany();
+for (const user of users) {
+  const posts = await prisma.post.findMany({
+    where: { authorId: user.id }
+  });
+  console.log(user.name, posts.length);
+}
+
+// Good - Use include/select
+const users = await prisma.user.findMany({
+  include: {
+    _count: {
+      select: { posts: true }
+    }
+  }
+});
+```
+
+**Use Appropriate Pagination:**
+```typescript
+// Offset pagination (simple, not for large datasets)
+const page = 1;
+const limit = 20;
+const posts = await prisma.post.findMany({
+  skip: (page - 1) * limit,
+  take: limit,
+  orderBy: { createdAt: 'desc' }
+});
+
+// Cursor pagination (better for large datasets)
+const posts = await prisma.post.findMany({
+  take: 20,
+  skip: cursor ? 1 : 0,
+  cursor: cursor ? { id: cursor } : undefined,
+  orderBy: { createdAt: 'desc' }
+});
+```
+
+**Select Only Needed Fields:**
+```typescript
+// Bad - Fetching everything
+const users = await prisma.user.findMany();
+
+// Good - Select specific fields
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    email: true,
+    name: true
+  }
+});
+```
+
+### Performance Monitoring
+
+```typescript
+// Log slow queries in development
+const prisma = new PrismaClient({
+  log: [
+    {
+      emit: 'event',
+      level: 'query',
+    },
+  ],
+});
+
+prisma.$on('query', (e) => {
+  if (e.duration > 1000) { // Log queries > 1s
+    console.warn('Slow query detected:', {
+      query: e.query,
+      duration: `${e.duration}ms`,
+      params: e.params,
+    });
+  }
+});
+```
+
+## Security Best Practices
+
+### SQL Injection Prevention
+
+```typescript
+// Always use parameterized queries with ORMs
+// Prisma automatically prevents SQL injection
+
+// Bad - Raw SQL with string concatenation (NEVER DO THIS)
+const userId = req.params.id;
+const user = await prisma.$queryRaw`SELECT * FROM users WHERE id = ${userId}`; // Still safe with Prisma
+
+// Good - Use ORM methods
+const user = await prisma.user.findUnique({
+  where: { id: userId }
+});
+
+// If raw SQL is necessary, use parameters
+const users = await prisma.$queryRaw`
+  SELECT * FROM users WHERE role = ${role} AND created_at > ${date}
+`;
+```
+
+### Database Credentials
+
+```bash
+# .env (never commit)
+DATABASE_URL="postgresql://user:password@localhost:5432/myapp?schema=public"
+
+# .env.example (safe to commit)
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
+
+# Use connection pooling
+DATABASE_URL="postgresql://user:password@localhost:5432/myapp?schema=public&connection_limit=10"
+```
+
+### Access Control
+
+```sql
+-- Create role with limited permissions
+CREATE ROLE app_user WITH LOGIN PASSWORD 'secure_password';
+
+-- Grant only necessary permissions
+GRANT CONNECT ON DATABASE myapp TO app_user;
+GRANT USAGE ON SCHEMA public TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+-- Revoke dangerous permissions
+REVOKE CREATE ON SCHEMA public FROM app_user;
+REVOKE ALL ON pg_catalog.pg_authid FROM app_user;
+```
+
+## Backup & Recovery
+
+### Backup Strategy
+
+**Automated Backups:**
+```bash
+# Daily backup script
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+pg_dump -h localhost -U postgres myapp > backup_${DATE}.sql
+
+# Keep last 30 days
+find /backups -name "backup_*.sql" -mtime +30 -delete
+```
+
+**Point-in-Time Recovery:**
+- Enable WAL archiving in PostgreSQL
+- Use managed database services (AWS RDS, Supabase)
+- Test restore procedures regularly
+- Store backups in different geographic location
+
+### Disaster Recovery
+
+1. **Regular backup verification** - Test restores monthly
+2. **Document recovery procedures** - Step-by-step guide
+3. **Monitor backup status** - Alert on failures
+4. **Encrypt backups** - Protect sensitive data
+5. **Maintain backup retention policy** - 30 days minimum
+
+---
+
+**Follow these database standards for reliable, performant, and maintainable data storage.**

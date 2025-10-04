@@ -1,0 +1,565 @@
+---
+description: Python test utilities and helper functions standards
+globs: ["**/tests/utils/**/*.py", "**/tests/factories.py", "**/tests/helpers.py"]
+alwaysApply: true
+---
+
+# Python Test Utilities Standards
+
+## Test Utilities Directory (`tests/utils/`)
+
+### Purpose
+Helper modules and functions that support testing:
+- Factory functions for creating test objects
+- Custom assertions and matchers
+- Test fixtures and mock builders
+- Shared test helpers
+- Custom pytest plugins
+
+### Organization
+
+```
+tests/utils/
+├── __init__.py           # Export commonly used utilities
+├── factories.py          # Object factories
+├── fixtures.py           # Reusable fixtures
+├── assertions.py         # Custom assertions
+├── mocks.py              # Mock builders
+├── helpers.py            # Generic helpers
+└── database.py           # Database test utilities
+```
+
+## Factory Pattern for Test Data
+
+### Using factory_boy
+
+```python
+# tests/utils/factories.py
+"""Test data factories."""
+
+import factory
+from factory.faker import Faker
+from myproject.models import User, Post, Comment
+
+class UserFactory(factory.Factory):
+    """Factory for creating test users."""
+
+    class Meta:
+        model = User
+
+    id = factory.Sequence(lambda n: n)
+    email = Faker("email")
+    name = Faker("name")
+    age = Faker("random_int", min=18, max=80)
+    is_active = True
+    role = "user"
+    created_at = Faker("date_time_this_year")
+
+    @classmethod
+    def admin(cls, **kwargs):
+        """Create admin user."""
+        return cls(role="admin", **kwargs)
+
+    @classmethod
+    def inactive(cls, **kwargs):
+        """Create inactive user."""
+        return cls(is_active=False, **kwargs)
+
+class PostFactory(factory.Factory):
+    """Factory for creating test posts."""
+
+    class Meta:
+        model = Post
+
+    id = factory.Sequence(lambda n: n)
+    title = Faker("sentence")
+    content = Faker("text")
+    author = factory.SubFactory(UserFactory)
+    published = True
+    created_at = Faker("date_time_this_month")
+
+class CommentFactory(factory.Factory):
+    """Factory for creating test comments."""
+
+    class Meta:
+        model = Comment
+
+    id = factory.Sequence(lambda n: n)
+    content = Faker("paragraph")
+    post = factory.SubFactory(PostFactory)
+    author = factory.SubFactory(UserFactory)
+    created_at = Faker("date_time_this_week")
+```
+
+### Usage in Tests
+
+```python
+# tests/test_user_service.py
+from tests.utils.factories import UserFactory, PostFactory
+
+def test_create_user():
+    # Build without saving
+    user_data = UserFactory.build()
+    assert user_data.id is not None
+
+def test_user_posts():
+    # Create with specific attributes
+    user = UserFactory(email="test@example.com")
+
+    # Create related objects
+    posts = PostFactory.create_batch(3, author=user)
+    assert len(posts) == 3
+    assert all(p.author == user for p in posts)
+
+def test_admin_permissions():
+    # Use factory methods
+    admin = UserFactory.admin()
+    assert admin.role == "admin"
+
+    regular_user = UserFactory()
+    assert regular_user.role == "user"
+```
+
+### Custom Factory Builders
+
+```python
+# tests/utils/builders.py
+"""Custom builders for complex test objects."""
+
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class TestUserBuilder:
+    """Builder for creating test users with fluent interface."""
+
+    email: str = "test@example.com"
+    name: str = "Test User"
+    age: int = 25
+    role: str = "user"
+    is_active: bool = True
+
+    def with_email(self, email: str) -> 'TestUserBuilder':
+        self.email = email
+        return self
+
+    def with_name(self, name: str) -> 'TestUserBuilder':
+        self.name = name
+        return self
+
+    def as_admin(self) -> 'TestUserBuilder':
+        self.role = "admin"
+        return self
+
+    def inactive(self) -> 'TestUserBuilder':
+        self.is_active = False
+        return self
+
+    def build(self) -> dict:
+        """Build user data dictionary."""
+        return {
+            "email": self.email,
+            "name": self.name,
+            "age": self.age,
+            "role": self.role,
+            "is_active": self.is_active,
+        }
+
+# Usage
+user_data = (TestUserBuilder()
+    .with_email("admin@example.com")
+    .with_name("Admin User")
+    .as_admin()
+    .build())
+```
+
+## Custom Assertions
+
+### Assertion Helpers
+
+```python
+# tests/utils/assertions.py
+"""Custom assertion helpers."""
+
+from typing import Any, Dict, List
+import json
+
+def assert_valid_uuid(value: str) -> None:
+    """Assert value is valid UUID."""
+    import uuid
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        raise AssertionError(f"{value} is not a valid UUID")
+
+def assert_valid_email(email: str) -> None:
+    """Assert email format is valid."""
+    import re
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(pattern, email):
+        raise AssertionError(f"{email} is not a valid email")
+
+def assert_datetime_recent(dt, max_age_seconds=60) -> None:
+    """Assert datetime is recent (within max_age_seconds)."""
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    age = (now - dt).total_seconds()
+    if age > max_age_seconds:
+        raise AssertionError(
+            f"Datetime {dt} is {age}s old, expected < {max_age_seconds}s"
+        )
+
+def assert_contains_subset(subset: Dict, full: Dict) -> None:
+    """Assert dictionary contains all keys/values from subset."""
+    for key, value in subset.items():
+        if key not in full:
+            raise AssertionError(f"Key '{key}' not found in {full}")
+        if full[key] != value:
+            raise AssertionError(
+                f"Key '{key}': expected {value}, got {full[key]}"
+            )
+
+def assert_json_equal(actual: str, expected: str) -> None:
+    """Assert JSON strings are equal (ignoring formatting)."""
+    actual_data = json.loads(actual)
+    expected_data = json.loads(expected)
+    if actual_data != expected_data:
+        raise AssertionError(
+            f"JSON mismatch:\nActual: {actual_data}\nExpected: {expected_data}"
+        )
+
+def assert_lists_equal_unordered(list1: List, list2: List) -> None:
+    """Assert lists contain same elements regardless of order."""
+    if sorted(list1) != sorted(list2):
+        raise AssertionError(
+            f"Lists not equal:\n{list1}\nvs\n{list2}"
+        )
+```
+
+### Usage
+
+```python
+# tests/test_user_service.py
+from tests.utils.assertions import (
+    assert_valid_uuid,
+    assert_valid_email,
+    assert_datetime_recent,
+    assert_contains_subset
+)
+
+def test_create_user():
+    user = user_service.create({
+        "email": "test@example.com",
+        "name": "Test User"
+    })
+
+    assert_valid_uuid(user.id)
+    assert_valid_email(user.email)
+    assert_datetime_recent(user.created_at)
+    assert_contains_subset(
+        {"email": "test@example.com", "name": "Test User"},
+        user.to_dict()
+    )
+```
+
+## Mock Builders
+
+### Reusable Mocks
+
+```python
+# tests/utils/mocks.py
+"""Mock builders and helpers."""
+
+from unittest.mock import Mock, MagicMock, AsyncMock
+from typing import Any, Dict
+
+class MockDatabaseBuilder:
+    """Builder for database mocks."""
+
+    def __init__(self):
+        self.mock = Mock()
+        self._setup_defaults()
+
+    def _setup_defaults(self):
+        """Set up default behaviors."""
+        self.mock.connect.return_value = None
+        self.mock.disconnect.return_value = None
+
+    def with_query_result(self, result: Any):
+        """Set query result."""
+        self.mock.query.return_value = result
+        return self
+
+    def with_query_error(self, error: Exception):
+        """Set query to raise error."""
+        self.mock.query.side_effect = error
+        return self
+
+    def build(self) -> Mock:
+        """Build the mock."""
+        return self.mock
+
+class MockApiClientBuilder:
+    """Builder for API client mocks."""
+
+    def __init__(self):
+        self.mock = Mock()
+        self._responses: Dict[str, Any] = {}
+
+    def with_get_response(self, url: str, response: Dict):
+        """Set GET response for URL."""
+        def get_side_effect(request_url):
+            if request_url == url:
+                return response
+            raise ValueError(f"Unexpected URL: {request_url}")
+
+        self.mock.get.side_effect = get_side_effect
+        return self
+
+    def with_post_response(self, url: str, response: Dict):
+        """Set POST response for URL."""
+        self._responses[url] = response
+        self.mock.post.return_value = response
+        return self
+
+    def build(self) -> Mock:
+        """Build the mock."""
+        return self.mock
+
+# Usage
+def test_database_query():
+    db = (MockDatabaseBuilder()
+        .with_query_result([{"id": 1, "name": "Test"}])
+        .build())
+
+    result = db.query("SELECT * FROM users")
+    assert result == [{"id": 1, "name": "Test"}]
+```
+
+## Test Fixtures
+
+### Reusable Fixtures
+
+```python
+# tests/utils/fixtures.py
+"""Reusable test fixtures."""
+
+import pytest
+from typing import Generator
+from myproject.database import Database
+
+@pytest.fixture
+def temp_file(tmp_path) -> Generator[str, None, None]:
+    """Create temporary file."""
+    file_path = tmp_path / "test_file.txt"
+    file_path.write_text("test content")
+    yield str(file_path)
+    # Cleanup happens automatically with tmp_path
+
+@pytest.fixture
+def mock_time(monkeypatch):
+    """Mock time.time() to return fixed value."""
+    from datetime import datetime
+    fixed_time = datetime(2024, 1, 1, 12, 0, 0)
+
+    class MockDatetime:
+        @staticmethod
+        def now():
+            return fixed_time
+
+        @staticmethod
+        def utcnow():
+            return fixed_time
+
+    monkeypatch.setattr("datetime.datetime", MockDatetime)
+    return fixed_time
+
+@pytest.fixture
+def capture_logs():
+    """Capture log messages."""
+    import logging
+    from io import StringIO
+
+    log_stream = StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setLevel(logging.DEBUG)
+
+    logger = logging.getLogger()
+    logger.addHandler(handler)
+
+    yield log_stream
+
+    logger.removeHandler(handler)
+
+@pytest.fixture
+def env_vars(monkeypatch):
+    """Set environment variables."""
+    def set_env(**kwargs):
+        for key, value in kwargs.items():
+            monkeypatch.setenv(key, value)
+
+    return set_env
+```
+
+## Database Test Utilities
+
+### Database Helpers
+
+```python
+# tests/utils/database.py
+"""Database testing utilities."""
+
+from contextlib import contextmanager
+from typing import Generator, Dict, Any
+import pytest
+
+class DatabaseTestHelper:
+    """Helper for database testing."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def seed(self, table: str, data: list[dict]) -> None:
+        """Seed table with data."""
+        for row in data:
+            self.db.insert(table, row)
+
+    def truncate(self, *tables: str) -> None:
+        """Truncate tables."""
+        for table in tables:
+            self.db.execute(f"TRUNCATE TABLE {table} CASCADE")
+
+    def count(self, table: str, where: Dict = None) -> int:
+        """Count rows in table."""
+        query = f"SELECT COUNT(*) FROM {table}"
+        if where:
+            conditions = " AND ".join(f"{k} = %s" for k in where.keys())
+            query += f" WHERE {conditions}"
+            return self.db.query_one(query, tuple(where.values()))[0]
+        return self.db.query_one(query)[0]
+
+    @contextmanager
+    def transaction(self) -> Generator:
+        """Run test in transaction and rollback."""
+        self.db.begin()
+        try:
+            yield
+        finally:
+            self.db.rollback()
+
+@pytest.fixture
+def db_helper(db):
+    """Provide database helper."""
+    return DatabaseTestHelper(db)
+
+# Usage
+def test_user_creation(db_helper):
+    with db_helper.transaction():
+        db_helper.seed("users", [
+            {"email": "test@example.com", "name": "Test"}
+        ])
+        assert db_helper.count("users") == 1
+
+        # Changes rolled back after test
+```
+
+## Test Helpers
+
+### Generic Helpers
+
+```python
+# tests/utils/helpers.py
+"""Generic test helper functions."""
+
+from typing import Any, Callable
+import time
+import asyncio
+
+def wait_until(
+    condition: Callable[[], bool],
+    timeout: float = 5.0,
+    interval: float = 0.1
+) -> bool:
+    """Wait until condition is true or timeout."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if condition():
+            return True
+        time.sleep(interval)
+    return False
+
+async def wait_until_async(
+    condition: Callable[[], bool],
+    timeout: float = 5.0,
+    interval: float = 0.1
+) -> bool:
+    """Async version of wait_until."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if await condition():
+            return True
+        await asyncio.sleep(interval)
+    return False
+
+def assert_raises_with_message(
+    exception_type: type,
+    message_substring: str
+):
+    """Context manager to assert exception with specific message."""
+    import pytest
+    with pytest.raises(exception_type) as exc_info:
+        yield
+    assert message_substring in str(exc_info.value)
+
+def deep_merge_dicts(dict1: dict, dict2: dict) -> dict:
+    """Deep merge two dictionaries."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+# Usage
+def test_async_operation():
+    result = None
+
+    async def fetch_result():
+        nonlocal result
+        result = await some_async_function()
+
+    asyncio.run(fetch_result())
+
+    assert wait_until(lambda: result is not None, timeout=2.0)
+    assert result == expected_value
+```
+
+## Best Practices
+
+### Reusability
+- Create generic utilities that can be used across tests
+- Keep utilities focused on single responsibility
+- Document expected usage with docstrings
+- Export commonly used utilities from `__init__.py`
+
+### Type Safety
+- Use type hints for all utility functions
+- Return concrete types, avoid `Any` when possible
+- Use generics for flexible but type-safe utilities
+
+### Maintainability
+- Keep utilities simple and well-tested
+- Avoid complex logic in test utilities
+- Version control test utilities like production code
+- Document breaking changes in utilities
+
+### Performance
+- Cache expensive operations
+- Use lazy evaluation when appropriate
+- Don't create heavy objects in module scope
+- Clean up resources in fixtures
+
+---
+
+**Build reusable test utilities for efficient and maintainable testing.**

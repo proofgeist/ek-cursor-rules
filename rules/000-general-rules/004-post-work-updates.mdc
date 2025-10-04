@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
----
----
-description: Project status and post-work updates
-globs: 
+description: Post-work updates and plan synchronization
+globs: []
 alwaysApply: true
 ---
 # Post-Work Plan Updates

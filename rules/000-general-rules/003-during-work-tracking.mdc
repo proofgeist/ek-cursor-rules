@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
----
----
-description: Work progress tracking
-globs: 
+description: Active work progress tracking and decision logging
+globs: []
 alwaysApply: true
 ---
 # During-Work Progress Tracking

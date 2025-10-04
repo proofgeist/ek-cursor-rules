@@ -1,11 +1,6 @@
 ---
-description: Core project plan consultation requirements
+description: Core project planning and strategy directives
 globs: []
-alwaysApply: true
----
----
-description: Project planning and strategy
-globs: 
 alwaysApply: true
 ---
 

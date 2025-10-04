@@ -1,0 +1,450 @@
+---
+description: Git workflow, commit conventions, and branching standards
+globs: [".gitignore", ".git/**"]
+alwaysApply: true
+---
+
+# Git Standards
+
+## Gitignore Standards
+
+### Required Entries
+
+Every project `.gitignore` must include:
+
+```gitignore
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.Python
+venv/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.next/
+out/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+.coverage
+coverage/
+*.cover
+.pytest_cache/
+.vitest/
+
+# OS
+.DS_Store
+Thumbs.db
+```
+
+## Commit Standards
+
+### Conventional Commits Format
+
+**Use Conventional Commits specification for all commit messages.**
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Commit Types
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Code style changes (formatting, missing semi-colons, etc)
+- **refactor**: Code change that neither fixes a bug nor adds a feature
+- **perf**: Performance improvements
+- **test**: Adding or updating tests
+- **build**: Changes to build system or dependencies
+- **ci**: Changes to CI configuration files and scripts
+- **chore**: Other changes that don't modify src or test files
+- **revert**: Reverts a previous commit
+
+### Commit Message Guidelines
+
+#### Subject Line
+- Use imperative mood: "add feature" not "added feature"
+- Don't capitalize first letter
+- No period at the end
+- Limit to 50 characters
+- Be specific and descriptive
+
+#### Body (Optional)
+- Separate from subject with blank line
+- Explain what and why, not how
+- Wrap at 72 characters
+- Use bullet points for multiple changes
+
+#### Footer (Optional)
+- Reference issues: `Fixes #123`, `Closes #456`
+- Note breaking changes: `BREAKING CHANGE: description`
+
+### Examples
+
+```bash
+# Simple feature
+feat(auth): add password reset functionality
+
+# Bug fix with details
+fix(api): resolve race condition in user creation
+
+Race condition occurred when multiple requests created users
+with the same email simultaneously. Added database constraint
+and proper error handling.
+
+Fixes #234
+
+# Breaking change
+feat(api): change authentication to use OAuth 2.0
+
+BREAKING CHANGE: Previous API key authentication is no longer
+supported. All clients must migrate to OAuth 2.0.
+
+# Documentation
+docs(readme): update installation instructions
+
+# Multiple changes
+chore: update dependencies
+
+- Upgrade React to v18.2.0
+- Update Next.js to v14.0.0
+- Fix TypeScript errors from upgrades
+```
+
+## Branching Strategy
+
+### Branch Naming Convention
+
+```
+<type>/<short-description>
+```
+
+**Types:**
+- `feature/` - New features
+- `fix/` - Bug fixes
+- `hotfix/` - Urgent production fixes
+- `refactor/` - Code refactoring
+- `docs/` - Documentation updates
+- `test/` - Test additions/updates
+- `chore/` - Maintenance tasks
+
+**Examples:**
+```
+feature/user-authentication
+fix/login-validation-error
+hotfix/security-vulnerability
+refactor/database-queries
+docs/api-documentation
+```
+
+### Branch Lifecycle
+
+#### Main Branches
+- **`main`** (or `master`) - Production-ready code
+- **`develop`** - Integration branch for features (if using Git Flow)
+
+#### Feature Development
+```bash
+# Create feature branch from main
+git checkout -b feature/user-profile main
+
+# Work on feature with regular commits
+git add .
+git commit -m "feat(profile): add user avatar upload"
+
+# Keep branch updated with main
+git fetch origin main
+git rebase origin/main
+
+# Push to remote
+git push origin feature/user-profile
+```
+
+#### Hotfix Process
+```bash
+# Create hotfix from main
+git checkout -b hotfix/critical-security-fix main
+
+# Make fix
+git add .
+git commit -m "fix(security): patch XSS vulnerability"
+
+# Merge to main AND develop
+git checkout main
+git merge --no-ff hotfix/critical-security-fix
+git checkout develop
+git merge --no-ff hotfix/critical-security-fix
+
+# Tag the release
+git tag -a v1.0.1 -m "Security patch"
+```
+
+## Pull Request Standards
+
+### PR Title Format
+Use same format as commit messages:
+```
+<type>(<scope>): <description>
+```
+
+### PR Description Template
+```markdown
+## Description
+Brief description of what this PR does.
+
+## Type of Change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+
+## Changes Made
+- Change 1
+- Change 2
+- Change 3
+
+## Testing
+- [ ] Tests added/updated
+- [ ] All tests passing
+- [ ] Manual testing completed
+
+## Screenshots (if applicable)
+[Add screenshots here]
+
+## Related Issues
+Fixes #(issue number)
+Relates to #(issue number)
+
+## Checklist
+- [ ] Code follows project style guidelines
+- [ ] Self-review completed
+- [ ] Comments added for complex logic
+- [ ] Documentation updated
+- [ ] No new warnings generated
+```
+
+### PR Best Practices
+
+1. **Keep PRs small and focused** - One feature/fix per PR
+2. **Update branch before creating PR** - Rebase on latest main
+3. **Write clear description** - Explain what and why
+4. **Add reviewers** - At least one reviewer required
+5. **Respond to feedback** - Address all review comments
+6. **Squash commits** (if configured) - Clean history in main
+
+### PR Merge Strategy
+
+**Choose one strategy per project:**
+
+#### Squash and Merge (Recommended)
+- Combines all commits into one
+- Clean linear history
+- Good for feature branches
+
+#### Merge Commit
+- Preserves all commits
+- Creates merge commit
+- Good for complex features
+
+#### Rebase and Merge
+- Linear history without merge commits
+- Rewrites commit history
+- Good for small changes
+
+## Code Review Guidelines
+
+### As a Reviewer
+
+**Required Checks:**
+- [ ] Code follows project standards and style guide
+- [ ] Changes are well-tested
+- [ ] No obvious bugs or security issues
+- [ ] Documentation is updated
+- [ ] Commit messages follow conventions
+- [ ] No unnecessary files committed
+- [ ] No secrets or sensitive data in code
+
+**Review Checklist:**
+- **Functionality**: Does it work as intended?
+- **Code Quality**: Is it readable and maintainable?
+- **Performance**: Any performance concerns?
+- **Security**: Any security vulnerabilities?
+- **Testing**: Are there adequate tests?
+- **Documentation**: Is it properly documented?
+
+### As an Author
+
+**Before Requesting Review:**
+- [ ] Self-review your own code
+- [ ] Run all tests locally
+- [ ] Update documentation
+- [ ] Check for console logs/debug code
+- [ ] Verify no merge conflicts
+- [ ] Add descriptive PR description
+
+**Responding to Feedback:**
+- Thank reviewers for their time
+- Ask questions if feedback is unclear
+- Make requested changes promptly
+- Mark conversations as resolved when addressed
+- Request re-review after changes
+
+## Git Workflow Best Practices
+
+### Daily Workflow
+
+```bash
+# Start of day - update main
+git checkout main
+git pull origin main
+
+# Create feature branch
+git checkout -b feature/new-feature
+
+# Regular commits during work
+git add <files>
+git commit -m "feat(scope): descriptive message"
+
+# Before pushing - rebase on main
+git fetch origin main
+git rebase origin/main
+
+# Push to remote
+git push origin feature/new-feature
+
+# Create pull request
+# (Use GitHub/GitLab UI)
+```
+
+### Commit Hygiene
+
+**Do:**
+- Commit frequently with logical chunks
+- Write descriptive commit messages
+- Keep commits focused on single change
+- Test before committing
+- Review diff before committing
+
+**Don't:**
+- Commit commented-out code
+- Commit debug/console logs
+- Commit large binary files
+- Commit secrets or credentials
+- Mix unrelated changes in one commit
+
+### Stashing Changes
+
+```bash
+# Save work in progress
+git stash save "WIP: feature description"
+
+# List stashes
+git stash list
+
+# Apply most recent stash
+git stash apply
+
+# Apply and remove stash
+git stash pop
+
+# Apply specific stash
+git stash apply stash@{2}
+```
+
+## Git Hooks
+
+### Recommended Pre-commit Hooks
+
+```bash
+# .git/hooks/pre-commit
+
+#!/bin/sh
+
+# Prevent commits to main
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" = "main" ]; then
+  echo "Direct commits to main are not allowed"
+  exit 1
+fi
+
+# Run linter
+npm run lint || exit 1
+
+# Run tests
+npm test || exit 1
+```
+
+### Recommended Commit-msg Hook
+
+```bash
+# .git/hooks/commit-msg
+
+#!/bin/sh
+
+# Validate commit message format
+commit_msg=$(cat "$1")
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,50}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "Invalid commit message format"
+  echo "Use: <type>(<scope>): <subject>"
+  exit 1
+fi
+```
+
+## Semantic Versioning Integration
+
+### Version Tags
+
+Follow semantic versioning when tagging releases:
+
+```bash
+# Major release (breaking changes)
+git tag -a v2.0.0 -m "Major release with breaking changes"
+
+# Minor release (new features)
+git tag -a v1.1.0 -m "Add new features"
+
+# Patch release (bug fixes)
+git tag -a v1.0.1 -m "Bug fixes and improvements"
+
+# Push tags
+git push origin --tags
+```
+
+### Automatic Versioning
+
+Use semantic-release or similar tools for automatic versioning based on commit messages (see versioning rules).
+
+---
+
+**Follow these Git standards for consistent, maintainable version control and collaboration.**

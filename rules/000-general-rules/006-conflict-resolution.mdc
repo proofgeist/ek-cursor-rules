@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
----
----
-description: Project status and post-work updates
-globs: 
+description: Conflict detection and resolution protocols
+globs: []
 alwaysApply: true
 ---
 
