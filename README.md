@@ -9,6 +9,26 @@ Fork away. Or, branch and send me a PR for changes.
 
 - EK
 
+## Working on This Repository
+
+If you want to contribute or customize the rules:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/proofgeist/ek-cursor-rules.git
+   cd ek-cursor-rules
+   ```
+
+2. **Open in Cursor IDE** - The rules in `/rules/` are symlinked to `.cursor/rules/`, so when you edit the `.mdc` files, you're working with the rules actively guiding your development.
+
+3. **Edit the rules** - Make changes to any `.mdc` file in the `/rules/` directories. The AI assistant will follow these rules as you work on them (meta!).
+
+4. **Test your changes** - The rules apply to this project itself, so you can verify they work as expected.
+
+5. **Submit a PR** - Follow the conventional commit format enforced by this project.
+
+**Note:** This "dogfooding" approach means the rules are always tested against themselves, ensuring they work in practice.
+
 ## Quick Start - Import Rules to Your Project
 
 ### Choose Your Method
