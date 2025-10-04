@@ -11,19 +11,25 @@ Fork away. Or, branch and send me a PR for changes.
 
 ## Quick Start - Import Rules to Your Project
 
-### Using the Import Script
+### Choose Your Method
 
-Two import scripts are available:
+**For Cursor IDE:**
 - `import-cursor-rules.sh` (Bash - Unix/Linux/macOS)
 - `import-cursor-rules.py` (Python - Cross-platform)
 
+**For Claude Code:**
+- `sync-to-claude.py` (Generates single Claude.md file)
+
 #### Basic Usage:
 ```bash
-# Copy all rules to a new project
+# Cursor IDE: Copy all rules to a new project
 ./import-cursor-rules.sh /path/to/my-project
 
-# Python version (cross-platform)
+# Cursor IDE: Python version (cross-platform)
 ./import-cursor-rules.py /path/to/my-project
+
+# Claude Code: Generate Claude.md file
+./sync-to-claude.py /path/to/my-project
 ```
 
 #### Advanced Options:
@@ -218,6 +224,16 @@ Plan Check → Conflict Resolution → Progress Track → Plan Update
 - Structured workflow to follow
 - Consistent quality standards
 - Technology-specific guidance
+
+## Documentation
+
+For comprehensive guides and detailed information:
+
+📖 **[Full Documentation](/docs/README.md)** - Central documentation hub
+- [Getting Started](/docs/getting-started/README.md) - Installation, quick start, configuration
+- [User Guide](/docs/user-guide/README.md) - Rule categories, best practices (coming soon)
+- [Developer Guide](/docs/developer-guide/README.md) - Contributing, creating rules (coming soon)
+- [API Reference](/docs/api/README.md) - Script documentation (coming soon)
 
 ## Usage
 
